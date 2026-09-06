@@ -1,0 +1,85 @@
+/* Estilos para la cuadrícula de tarjetas de la vista de inicio */
+
+/* Contenedor de las tarjetas */
+.card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); /* Mínimo 300px, se adapta */
+    gap: 30px;
+    padding: 20px;
+    width: 100%;
+    margin-top: 20px;
+}
+
+/* Enlace contenedor */
+.card-link {
+    text-decoration: none;
+    color: inherit;
+    display: block; /* Asegura que la tarjeta ocupe el espacio */
+}
+
+/* Estilo base de la tarjeta (similar a la segunda imagen) */
+.menu-card {
+    background-color: #fff;
+    border-radius: 12px;
+    padding: 30px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    height: 100%;
+    transition: transform 0.2s, box-shadow 0.2s;
+    border-left: 5px solid; /* Usado por las clases de color */
+    box-sizing: border-box;
+}
+
+/* Sombra y efecto hover */
+.shadow {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.card-link:hover .menu-card {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+}
+
+/* Colores del Borde Izquierdo y Título (Armonía visual) */
+.color-primary {
+    border-left-color: #007bff; /* Azul */
+}
+.color-success {
+    border-left-color: #28a745; /* Verde */
+}
+.color-warning {
+    border-left-color: #ffc107; /* Amarillo */
+}
+
+/* Íconos (Requiere FontAwesome o imágenes) */
+.card-icon {
+    font-size: 2.5em;
+    margin-bottom: 15px;
+    /* Los íconos pueden tomar el color del borde si quieres que coincida */
+    /* color: inherit; */
+}
+
+/* Título */
+.card-title {
+    font-size: 1.4em;
+    font-weight: 700;
+    margin-top: 0;
+    margin-bottom: 5px;
+    color: #333;
+}
+
+/* Descripción */
+.card-description {
+    font-size: 0.95em;
+    color: #6c757d;
+    line-height: 1.4;
+}
+
+/* Media Query para una mejor visualización en pantallas pequeñas */
+@media (max-width: 768px) {
+    .card-grid {
+        grid-template-columns: 1fr;
+        padding: 10px;
+    }
+}

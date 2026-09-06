@@ -1,0 +1,126 @@
+body {
+    margin: 0;
+    font-family: 'Segoe UI', sans-serif;
+    background-color: #d9d9d9;
+}
+
+.container {
+    display: flex;
+    flex-grow: 1;
+    height: 100%;
+}
+
+/* Barra Lateral */
+.sidebar {
+    background-color: #fafafa;
+    padding: 20px 10px;
+    width: 70px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 50px;
+}
+
+.logo-wrapper {
+    width: 55px;
+    height: 55px;
+    background-color: #d6eaff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.sidebar-iconLogo {
+    width: 80px;
+    height: 80px;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+/* Formulario */
+.form-container {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;   
+    justify-content: center;  
+    align-items: center;      
+}
+
+
+.form-box {
+    width: 100%;
+    max-width: 500px;
+}
+
+
+
+.form-container h1 {
+    color: #1565c0;
+    font-size: 70px;
+    margin-bottom: 30px;
+}
+
+form {
+    display: flex;
+    flex-direction: column;
+    max-width: 500px;
+}
+
+label {
+    margin: 10px 0 5px;
+    font-weight: bold;
+    font-size: 25px;
+    color: #1565c0;
+}
+
+
+input, select {
+    padding: 10px;
+    border-radius: 20px;
+    border: 1px solid #999;
+    font-size: 15px;
+    outline: none;
+    box-shadow: inset 2px 2px 5px rgba(0,0,0,0.1);
+}
+
+.form-buttons {
+    margin-top: 30px;
+    display: flex;
+    justify-content: center; 
+    gap: 20px;               
+}
+
+.guardar {
+    background-color: #1f80e0;
+    color: white;
+    border: none;
+    padding: 20px 40px;
+    border-radius: 20px;
+    font-size: 20px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.cancelar {
+    background-color: #e74c3c;
+    color: white;
+    text-decoration: none;
+    padding: 20px 40px;
+    border-radius: 20px;
+    font-size: 20px;
+    font-weight: bold;
+    display: inline-block;
+    box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.cancelar:hover{
+    background-color: #ad2626;
+    transform: scale(1.1);
+}
+
+.guardar:hover{
+    background-color: #112f92;
+    transform: scale(1.1);
+}

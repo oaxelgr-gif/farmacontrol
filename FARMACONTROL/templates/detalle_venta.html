@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Detalle de Venta #{{ venta.folio }} | FarmaControl</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        :root { 
+            --primary-blue: #1e5ba0; 
+            --deep-blue: #0d3b66;
+            --success-green: #27ae60;
+            --warning-orange: #f39c12;
+            --danger-red: #e74c3c;
+            --bg-gray: #f8f9fa; 
+        }
+        
+        body { background-color: var(--bg-gray); font-family: 'Inter', sans-serif; }
+        
+        /* Sidebar */
+        .sidebar { 
+            width: 80px; height: 100vh; background: #fff; position: fixed; 
+            left: 0; top: 0; border-right: 1px solid #e1e4e8; 
+            display: flex; flex-direction: column; align-items: center; 
+            padding: 25px 0; z-index: 1100; 
+        }
+        .logo-img { width: 42px; margin-bottom: 30px; }
+        .sidebar-link { color: #adb5bd; font-size: 1.4rem; margin-bottom: 25px; transition: 0.3s; }
+        .sidebar-link:hover, .sidebar-link.active { color: var(--primary-blue); }
+        .logout-btn { margin-top: auto; color: #ff4757; font-size: 1.5rem; }
+        
+        /* Main Content */
+        .main-content { margin-left: 80px; padding: 40px 60px; min-height: 100vh; }
+        
+        /* Header */
+        .header-title { 
+            color: var(--deep-blue); font-weight: 900; 
+            font-size: 2.2rem; letter-spacing: -1px; 
+        }
+        
+        /* Cards */
+        .info-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+            border: 1px solid #e9ecef;
+            margin-bottom: 25px;
+        }
+        
+        /* Status Badges */
+        .badge-success { background: #d4edda; color: #155724; }
+        .badge-primary { background: #d1ecf1; color: #0c5460; }
+        .badge-info { background: #d1ecf1; color: #0c5460; }
+        .badge-warning { background: #fff3cd; color: #856404; }
+        
+        /* Table */
+        .table-detalle thead th {
+            background: #f8f9fa;
+            color: var(--deep-blue);
+            font-weight: 800;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid #dee2e6;
+        }
+        
+        .table-detalle tbody tr:hover {
+            background-color: rgba(30, 91, 160, 0.02);
+        }
+        
+        .table-detalle td {
+            vertical-align: middle;
+            padding: 15px 20px;
+        }
+        
+        /* Stats Cards */
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 3px 15px rgba(0,0,0,0.05);
+            border: 1px solid #e9ecef;
+            height: 100%;
+        }
+        
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 900;
+            color: var(--deep-blue);
+            line-height: 1;
+        }
+        
+        .stat-label {
+            color: #6c757d;
+            font-weight: 700;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            margin-top: 10px;
+        }
+        
+        .stat-success { color: var(--success-green) !important; }
+        .stat-danger { color: var(--danger-red) !important; }
+        
+        /* Buttons */
+        .btn-action {
+            padding: 12px 25px;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 0.95rem;
+            border: none;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        
+        .btn-primary-custom {
+            background: var(--primary-blue);
+            color: white;
+        }
+        
+        .btn-primary-custom:hover {
+            background: var(--deep-blue);
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(30, 91, 160, 0.2);
+            text-decoration: none;
+        }
+        
+        .btn-success-custom {
+            background: var(--success-green);
+            color: white;
+        }
+        
+        .btn-success-custom:hover {
+            background: #219653;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(39, 174, 96, 0.2);
+            text-decoration: none;
+        }
+        
+        .btn-outline-custom {
+            background: white;
+            color: var(--primary-blue);
+            border: 2px solid var(--primary-blue);
+        }
+        
+        .btn-outline-custom:hover {
+            background: var(--primary-blue);
+            color: white;
+            text-decoration: none;
+        }
+        
+        /* Antibiotico Badge */
+        .antibiotico-badge {
+            background: rgba(231, 76, 60, 0.1);
+            color: var(--danger-red);
+            font-size: 0.7rem;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-weight: 800;
+            margin-left: 8px;
+        }
+        
+        /* Cliente Info */
+        .cliente-info {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            border-left: 4px solid var(--primary-blue);
+        }
+        
+        /* Modal del Ticket - MEJORADO PERO MÁS SIMPLE */
+        .modal-ticket {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .modal-ticket.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .modal-ticket-content {
+            background: white;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 450px;
+            transform: translateY(30px);
+            transition: transform 0.3s ease;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        .modal-ticket.active .modal-ticket-content {
+            transform: translateY(0);
+        }
+        
+        .ticket-modal-header {
+            background: var(--primary-blue);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            position: relative;
+        }
+        
+        .ticket-modal-header h4 {
+            font-weight: 900;
+            font-size: 1.5rem;
+            margin-bottom: 5px;
+        }
+        
+        .ticket-modal-body {
+            padding: 0;
+            position: relative;
+        }
+        
+        .ticket-preview-container {
+            width: 100%;
+            height: 450px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .ticket-iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            transform: scale(0.95);
+            transform-origin: top center;
+        }
+        
+        .ticket-modal-actions {
+            padding: 20px;
+            background: #f8f9fa;
+            border-top: 1px solid #e9ecef;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        
+        /* Animaciones de impresión simples */
+        .print-animation {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: var(--success-green);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.5rem;
+            z-index: 10;
+            opacity: 0;
+            animation: printPulse 1.5s ease-in-out;
+        }
+        
+        @keyframes printPulse {
+            0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+            50% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(1.5); opacity: 0; }
+        }
+        
+        .btn-print-modal {
+            background: var(--primary-blue);
+            color: white;
+            border: none;
+            padding: 10px 25px;
+            border-radius: 10px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-print-modal:hover {
+            background: var(--deep-blue);
+            transform: translateY(-2px);
+        }
+        
+        .btn-close-modal {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 10px 25px;
+            border-radius: 10px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-close-modal:hover {
+            background: #495057;
+        }
+        
+        .loading-indicator {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 2;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .loading-indicator i {
+            font-size: 2rem;
+            color: var(--primary-blue);
+            margin-bottom: 10px;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .main-content {
+                margin-left: 0;
+                padding: 20px;
+            }
+            
+            .sidebar {
+                width: 100%;
+                height: 60px;
+                flex-direction: row;
+                justify-content: space-around;
+                padding: 0 20px;
+                top: auto;
+                bottom: 0;
+                border-right: none;
+                border-top: 1px solid #e1e4e8;
+            }
+            
+            .logo-img, .logout-btn {
+                display: none;
+            }
+            
+            .sidebar-link {
+                margin-bottom: 0;
+            }
+            
+            .modal-ticket-content {
+                width: 95%;
+                margin: 10px;
+            }
+            
+            .ticket-modal-actions {
+                flex-direction: column;
+            }
+        }
+        
+        /* Print Styles */
+        @media print {
+            .sidebar, .no-print, .btn-action, .modal-ticket {
+                display: none !important;
+            }
+            
+            .main-content {
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            
+            .info-card {
+                border: none !important;
+                box-shadow: none !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<aside class="sidebar">
+    <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo" class="logo-img">
+    <a href="{{ url_for('index') }}" class="sidebar-link" title="Inicio"><i class="fas fa-th-large"></i></a>
+    <a href="{{ url_for('punto_venta') }}" class="sidebar-link" title="Punto de Venta"><i class="fas fa-cash-register"></i></a>
+    <a href="{{ url_for('listar_productos') }}" class="sidebar-link" title="Inventario"><i class="fas fa-boxes-stacked"></i></a>
+    
+    {% if current_user.rol == 1 %}
+    <a href="{{ url_for('modulo_reportes_dashboard') }}" class="sidebar-link" title="Reportes"><i class="fas fa-file-waveform"></i></a>
+    <a href="{{ url_for('gestion_servicios') }}" class="sidebar-link" title="Servicios Médicos"><i class="fas fa-stethoscope"></i></a>
+    <a href="{{ url_for('listar_usuarios') }}" class="sidebar-link" title="Usuarios"><i class="fas fa-users-cog"></i></a>
+    {% endif %}
+    
+    <a href="{{ url_for('Salir') }}" class="logout-btn" title="Cerrar Sesión"><i class="fas fa-sign-out-alt"></i></a>
+</aside>
+
+<main class="main-content">
+    <!-- Header -->
+    <header class="mb-4">
+        <div class="d-flex justify-content-between align-items-start">
+            <div>
+                <h1 class="header-title">Detalle de Venta</h1>
+                <p class="text-muted font-weight-bold">Folio: {{ venta.folio }} | {{ venta.fecha.strftime('%d/%m/%Y %H:%M') }}</p>
+            </div>
+            <div class="d-flex flex-column align-items-end">
+                <div class="badge badge-success px-3 py-2 mb-2" style="font-size: 1rem;">
+                    <i class="fas fa-check-circle mr-2"></i>Venta Completada
+                </div>
+                <div class="text-muted small">
+                    <i class="fas fa-user mr-1"></i> {{ current_user.nombre }}
+                </div>
+            </div>
+        </div>
+    </header>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show mb-4 border-0 shadow-sm" style="border-radius: 12px;">
+                    <i class="fas fa-info-circle mr-2"></i> {{ message }}
+                    <button type="button" class="close" data-dismiss="alert">&times;</button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- Información Principal -->
+    <div class="row mb-4">
+        <!-- Estadísticas -->
+        <div class="col-md-3 mb-4">
+            <div class="stat-card">
+                <div class="stat-value">${{ "%.2f"|format(venta.total) }}</div>
+                <div class="stat-label">Total de Venta</div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-4">
+            <div class="stat-card">
+                <div class="stat-value">{{ total_productos }}</div>
+                <div class="stat-label">Productos Vendidos</div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-4">
+            <div class="stat-card">
+                <div class="stat-value stat-success">${{ "%.2f"|format(utilidad) }}</div>
+                <div class="stat-label">Utilidad Bruta</div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-4">
+            <div class="stat-card">
+                <div class="stat-value">{{ detalles|length }}</div>
+                <div class="stat-label">Items en la Venta</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Información de la Venta -->
+        <div class="col-lg-4 mb-4">
+            <div class="info-card">
+                <h5 class="font-weight-bold mb-3" style="color: var(--deep-blue);">
+                    <i class="fas fa-info-circle mr-2"></i>Información de la Venta
+                </h5>
+                
+                <div class="mb-3">
+                    <div class="small text-muted mb-1">Folio</div>
+                    <div class="font-weight-bold h5">{{ venta.folio }}</div>
+                </div>
+                
+                <div class="mb-3">
+                    <div class="small text-muted mb-1">Fecha y Hora</div>
+                    <div class="font-weight-bold">{{ venta.fecha.strftime('%d/%m/%Y %H:%M:%S') }}</div>
+                </div>
+                
+                <div class="mb-3">
+                    <div class="small text-muted mb-1">Vendedor</div>
+                    <div class="font-weight-bold">{{ venta.vendedor }}</div>
+                </div>
+                
+                <div class="mb-3">
+                    <div class="small text-muted mb-1">Método de Pago</div>
+                    <div class="font-weight-bold">
+                        {% if venta.metodo_pago == 'Efectivo' %}
+                            <span class="badge badge-success">{{ venta.metodo_pago }}</span>
+                        {% elif venta.metodo_pago == 'Tarjeta' %}
+                            <span class="badge badge-info">{{ venta.metodo_pago }}</span>
+                        {% else %}
+                            <span class="badge badge-warning">{{ venta.metodo_pago }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <div class="small text-muted mb-1">Pago Recibido / Cambio</div>
+                    <div class="font-weight-bold">
+                        ${{ "%.2f"|format(venta.pago_recibido) }} / ${{ "%.2f"|format(venta.cambio_entregado) }}
+                    </div>
+                </div>
+                
+                {% if venta.cliente and venta.cliente != 'Público General' %}
+                <div class="cliente-info mt-4">
+                    <h6 class="font-weight-bold mb-3">
+                        <i class="fas fa-user mr-2"></i>Información del Cliente
+                    </h6>
+                    
+                    <div class="mb-2">
+                        <div class="small text-muted">Nombre</div>
+                        <div class="font-weight-bold">{{ venta.cliente }}</div>
+                    </div>
+                    
+                    {% if venta.rfc_nit %}
+                    <div class="mb-2">
+                        <div class="small text-muted">RFC/NIT</div>
+                        <div class="font-weight-bold">{{ venta.rfc_nit }}</div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if venta.telefono %}
+                    <div class="mb-2">
+                        <div class="small text-muted">Teléfono</div>
+                        <div class="font-weight-bold">{{ venta.telefono }}</div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if venta.direccion %}
+                    <div class="mb-2">
+                        <div class="small text-muted">Dirección</div>
+                        <div class="font-weight-bold small">{{ venta.direccion }}</div>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Detalle de Productos -->
+        <div class="col-lg-8">
+            <div class="info-card">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h5 class="font-weight-bold mb-0" style="color: var(--deep-blue);">
+                        <i class="fas fa-boxes mr-2"></i>Productos Vendidos
+                    </h5>
+                    <span class="badge badge-primary px-3 py-2">
+                        {{ total_productos }} unidades
+                    </span>
+                </div>
+                
+                <div class="table-responsive">
+                    <table class="table table-detalle">
+                        <thead>
+                            <tr>
+                                <th>Producto</th>
+                                <th class="text-center">Cantidad</th>
+                                <th class="text-center">Precio Unitario</th>
+                                <th class="text-center">Subtotal</th>
+                                <th class="text-center">Costo</th>
+                                <th class="text-center">Utilidad</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in detalles %}
+                            <tr>
+                                <td>
+                                    <div class="font-weight-bold">
+                                        {{ item.producto_nombre }}
+                                        {% if item.antibiotico == 1 %}
+                                        <span class="antibiotico-badge">ANTIBIÓTICO</span>
+                                        {% endif %}
+                                    </div>
+                                    <div class="small text-muted">
+                                        {% if item.codigo_barras %}
+                                        Código: {{ item.codigo_barras }}
+                                        {% endif %}
+                                        {% if item.lote %}
+                                        | Lote: {{ item.lote }}
+                                        {% endif %}
+                                    </div>
+                                </td>
+                                <td class="text-center font-weight-bold">
+                                    {{ item.cantidad }}
+                                </td>
+                                <td class="text-center">
+                                    ${{ "%.2f"|format(item.precio_unitario) }}
+                                </td>
+                                <td class="text-center font-weight-bold">
+                                    ${{ "%.2f"|format(item.subtotal) }}</td>
+                                <td class="text-center text-muted">
+                                    ${{ "%.2f"|format(item.precio_costo_momento) if item.precio_costo_momento else 'N/A' }}
+                                </td>
+                                <td class="text-center">
+                                    {% set item_utilidad = item.subtotal - (item.cantidad * (item.precio_costo_momento or 0)) %}
+                                    <span class="{% if item_utilidad >= 0 %}text-success{% else %}text-danger{% endif %} font-weight-bold">
+                                        ${{ "%.2f"|format(item_utilidad) }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="6" class="text-center py-5 text-muted">
+                                    <i class="fas fa-box-open fa-3x mb-3" style="opacity: 0.3;"></i>
+                                    <p class="mb-0">No hay productos en esta venta</p>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot class="bg-light">
+                            <tr>
+                                <td colspan="3" class="text-right font-weight-bold">Totales:</td>
+                                <td class="text-center font-weight-bold h5">
+                                    ${{ "%.2f"|format(venta.total) }}
+                                </td>
+                                <td class="text-center font-weight-bold text-muted">
+                                    ${{ "%.2f"|format(total_costo) }}
+                                </td>
+                                <td class="text-center">
+                                    <span class="font-weight-bold h5 {% if utilidad >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                        ${{ "%.2f"|format(utilidad) }}
+                                    </span>
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+                
+                <!-- Resumen de Utilidad - SE QUEDA ESTÁTICO -->
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <div class="alert alert-light border" style="border-radius: 12px;">
+                            <h6 class="font-weight-bold mb-2">
+                                <i class="fas fa-chart-line mr-2"></i>Resumen de Rentabilidad
+                            </h6>
+                            <div class="d-flex justify-content-between mb-1">
+                                <span>Venta Total:</span>
+                                <span class="font-weight-bold">${{ "%.2f"|format(venta.total) }}</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-1">
+                                <span>Costo Total:</span>
+                                <span class="font-weight-bold text-muted">${{ "%.2f"|format(total_costo) }}</span>
+                            </div>
+                            <hr class="my-2">
+                            <div class="d-flex justify-content-between">
+                                <span class="font-weight-bold">Utilidad Bruta:</span>
+                                <span class="font-weight-bold h5 {% if utilidad >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                    ${{ "%.2f"|format(utilidad) }}
+                                </span>
+                            </div>
+                            {% if venta.total > 0 %}
+                            <div class="mt-2 text-center">
+                                <span class="badge badge-info">
+                                    Margen: {{ "%.1f"|format((utilidad / venta.total) * 100) }}%
+                                </span>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="alert alert-light border" style="border-radius: 12px;">
+                            <h6 class="font-weight-bold mb-2">
+                                <i class="fas fa-pills mr-2"></i>Resumen de Antibióticos
+                            </h6>
+                            {% set antibioticos = detalles|selectattr('antibiotico', 'equalto', 1)|list %}
+                            {% if antibioticos %}
+                                <p class="mb-2">
+                                    <i class="fas fa-exclamation-triangle text-warning mr-2"></i>
+                                    Esta venta contiene <strong>{{ antibioticos|length }}</strong> antibiótico(s)
+                                </p>
+                                <ul class="mb-0 pl-3 small">
+                                    {% for item in antibioticos %}
+                                    <li>{{ item.producto_nombre }} ({{ item.cantidad }} unidades)</li>
+                                    {% endfor %}
+                                </ul>
+                            {% else %}
+                                <p class="mb-0 text-success">
+                                    <i class="fas fa-check-circle mr-2"></i>
+                                    Esta venta no contiene antibióticos
+                                </p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Botones de Acción -->
+    <div class="row mt-4 no-print">
+        <div class="col-12">
+            <div class="info-card">
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-center">
+                    <div class="mb-3 mb-md-0">
+                        <h6 class="font-weight-bold mb-0" style="color: var(--deep-blue);">
+                            <i class="fas fa-cogs mr-2"></i>Acciones Disponibles
+                        </h6>
+                        <p class="small text-muted mb-0">Opciones para esta venta</p>
+                    </div>
+                    
+                    <div class="d-flex flex-wrap gap-3">
+                        <button class="btn-action btn-success-custom" onclick="mostrarTicketVistaPrevia()" id="btnReimprimir">
+                            <i class="fas fa-print mr-2"></i> Reimprimir Ticket (F12)
+                        </button>
+                        
+                        <a href="{{ url_for('reporte_ventas_detalladas') }}" class="btn-action btn-outline-custom">
+                            <i class="fas fa-list mr-2"></i> Volver al Listado
+                        </a>
+                        
+                        {% if current_user.rol == 1 %}
+                        <button class="btn-action btn-primary-custom" onclick="window.print()">
+                            <i class="fas fa-file-pdf mr-2"></i> Exportar a PDF
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+<!-- Modal para vista previa del ticket - VERSIÓN SIMPLIFICADA -->
+<div class="modal-ticket" id="modalTicket">
+    <div class="modal-ticket-content">
+        <div class="ticket-modal-header">
+            <h4 class="mb-0 font-weight-bold">Vista Previa del Ticket</h4>
+            <p class="mb-0 small">Folio: {{ venta.folio }}</p>
+        </div>
+        <div class="ticket-modal-body">
+            <div class="print-animation" id="printAnimation">
+                <i class="fas fa-print"></i>
+            </div>
+            <div class="loading-indicator" id="loadingIndicator">
+                <i class="fas fa-spinner fa-spin"></i>
+                <p class="mt-2 font-weight-bold">Cargando ticket...</p>
+            </div>
+            <div class="ticket-preview-container">
+                <iframe class="ticket-iframe" id="ticketIframe" onload="ticketCargado()"></iframe>
+            </div>
+        </div>
+        <div class="ticket-modal-actions">
+            <button class="btn-print-modal" onclick="imprimirTicket()" id="btnImprimirTicket">
+                <i class="fas fa-print mr-1"></i> IMPRIMIR
+            </button>
+            <button class="btn-close-modal" onclick="cerrarModalTicket()">
+                <i class="fas fa-times mr-1"></i> CERRAR
+            </button>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    $(document).ready(function() {
+        // Auto-close alerts after 5 seconds
+        window.setTimeout(function() {
+            $(".alert").fadeTo(700, 0).slideUp(700, function() {
+                $(this).remove();
+            });
+        }, 7000);
+        
+        // Atajo de teclado F12 para reimprimir ticket
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'F12') {
+                e.preventDefault();
+                mostrarTicketVistaPrevia();
+            }
+            
+            // Ctrl+P para imprimir directamente (desde el modal)
+            if (e.ctrlKey && e.key === 'p' && document.getElementById('modalTicket').classList.contains('active')) {
+                e.preventDefault();
+                imprimirTicket();
+            }
+            
+            // Escape para cerrar modal
+            if (e.key === 'Escape' && document.getElementById('modalTicket').classList.contains('active')) {
+                e.preventDefault();
+                cerrarModalTicket();
+            }
+        });
+    });
+    
+    // Variable para controlar el estado del modal
+    let modalAbierto = false;
+    let ticketCargadoCorrectamente = false;
+    
+    // Función para mostrar el modal con animación
+    function mostrarTicketVistaPrevia() {
+        if (modalAbierto) return;
+        
+        const modal = document.getElementById('modalTicket');
+        const iframe = document.getElementById('ticketIframe');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const printAnimation = document.getElementById('printAnimation');
+        const btnReimprimir = document.getElementById('btnReimprimir');
+        const btnImprimirTicket = document.getElementById('btnImprimirTicket');
+        
+        // Resetear estado
+        ticketCargadoCorrectamente = false;
+        modalAbierto = true;
+        
+        // Deshabilitar botón mientras carga
+        btnReimprimir.disabled = true;
+        btnReimprimir.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Cargando...';
+        
+        // Mostrar loading
+        loadingIndicator.style.display = 'block';
+        printAnimation.style.display = 'none';
+        
+        // Mostrar el modal con animación
+        modal.classList.add('active');
+        
+        // Cargar el ticket en el iframe
+        const ticketUrl = "{{ url_for('reimprimir_ticket', venta_id=venta.id) }}";
+        iframe.src = ticketUrl;
+        
+        // Ejecutar animación de impresión después de un breve retraso
+        setTimeout(() => {
+            printAnimation.style.display = 'flex';
+            setTimeout(() => {
+                printAnimation.style.display = 'none';
+            }, 1500);
+        }, 500);
+    }
+    
+    // Función llamada cuando el iframe se carga
+    function ticketCargado() {
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const iframe = document.getElementById('ticketIframe');
+        const btnReimprimir = document.getElementById('btnReimprimir');
+        const btnImprimirTicket = document.getElementById('btnImprimirTicket');
+        
+        // Ocultar loading indicator
+        loadingIndicator.style.display = 'none';
+        
+        // Restaurar botón
+        btnReimprimir.disabled = false;
+        btnReimprimir.innerHTML = '<i class="fas fa-print mr-2"></i> Reimprimir Ticket (F12)';
+        
+        // Habilitar botón de imprimir
+        btnImprimirTicket.disabled = false;
+        ticketCargadoCorrectamente = true;
+        
+        // Enviar mensaje al iframe para que sepa que está en vista previa
+        setTimeout(() => {
+            if (iframe.contentWindow) {
+                iframe.contentWindow.postMessage({ type: 'vistaPrevia', ventaId: {{ venta.id }} }, '*');
+            }
+        }, 500);
+    }
+    
+    // Función para imprimir el ticket desde el iframe
+    function imprimirTicket() {
+        if (!ticketCargadoCorrectamente) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Espere',
+                text: 'El ticket aún se está cargando...',
+                timer: 1500,
+                showConfirmButton: false
+            });
+            return;
+        }
+        
+        const iframe = document.getElementById('ticketIframe');
+        const printAnimation = document.getElementById('printAnimation');
+        
+        if (iframe && iframe.contentWindow) {
+            // Mostrar animación de impresión
+            printAnimation.style.display = 'flex';
+            
+            // Enviar mensaje al iframe para que imprima
+            setTimeout(() => {
+                iframe.contentWindow.postMessage({ type: 'imprimir' }, '*');
+                
+                // También intentar imprimir directamente
+                setTimeout(() => {
+                    try {
+                        iframe.contentWindow.focus();
+                        iframe.contentWindow.print();
+                    } catch (e) {
+                        console.log("Impresión automática no disponible");
+                    }
+                    
+                    // Ocultar animación
+                    setTimeout(() => {
+                        printAnimation.style.display = 'none';
+                        
+                        // Mostrar notificación de éxito
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Impresión iniciada',
+                            text: 'El ticket se está imprimiendo',
+                            timer: 1500,
+                            showConfirmButton: false
+                        });
+                    }, 1000);
+                }, 500);
+            }, 300);
+        }
+    }
+    
+    // Función para cerrar el modal
+    function cerrarModalTicket() {
+        const modal = document.getElementById('modalTicket');
+        const iframe = document.getElementById('ticketIframe');
+        const btnImprimirTicket = document.getElementById('btnImprimirTicket');
+        
+        // Cerrar con animación
+        modal.classList.remove('active');
+        
+        // Limpiar el iframe después de la animación
+        setTimeout(() => {
+            iframe.src = 'about:blank';
+            
+            // Resetear variables de estado
+            modalAbierto = false;
+            ticketCargadoCorrectamente = false;
+            btnImprimirTicket.disabled = true;
+        }, 400);
+    }
+    
+    // Escuchar mensajes desde el iframe
+    window.addEventListener('message', function(event) {
+        if (event.data && event.data.type === 'impresionCompletada') {
+            Swal.fire({
+                icon: 'success',
+                title: '¡Ticket impreso!',
+                text: 'La impresión se ha completado correctamente',
+                timer: 2000,
+                showConfirmButton: false
+            });
+        }
+        
+        if (event.data && event.data.type === 'errorCarga') {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error al cargar',
+                text: 'No se pudo cargar el ticket',
+                confirmButtonText: 'Reintentar',
+                showCancelButton: true,
+                cancelButtonText: 'Cerrar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Recargar el iframe
+                    const iframe = document.getElementById('ticketIframe');
+                    iframe.src = "{{ url_for('reimprimir_ticket', venta_id=venta.id) }}";
+                } else {
+                    cerrarModalTicket();
+                }
+            });
+        }
+    });
+    
+    // Formatear valores de moneda (opcional)
+    function formatCurrency() {
+        $('.stat-value, .font-weight-bold').each(function() {
+            var text = $(this).text();
+            if (text.includes('$')) {
+                var num = parseFloat(text.replace('$', '').replace(/,/g, ''));
+                if (!isNaN(num)) {
+                    $(this).text('$' + num.toLocaleString('es-MX', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                    }));
+                }
+            }
+        });
+    }
+</script>
+</body>
+</html>

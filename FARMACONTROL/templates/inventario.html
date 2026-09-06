@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventario | FarmaControl</title>
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        :root { 
+            --primary-blue: #1e5ba0; 
+            --deep-blue: #0d3b66;
+            --success-green: #2ecc71;
+            --danger-red: #e74c3c;
+            --warning-orange: #d46b08;
+            --bg-gray: #f0f2f5; 
+        }
+        
+        body { background-color: var(--bg-gray); font-family: 'Inter', 'Segoe UI', sans-serif; margin: 0; min-height: 100vh; }
+
+        /* Sidebar Navigation (Exacto a Referencia) */
+        .sidebar { 
+            width: 80px; height: 100vh; background: #fff; position: fixed; 
+            left: 0; top: 0; border-right: 1px solid #e1e4e8; 
+            display: flex; flex-direction: column; align-items: center; 
+            padding: 25px 0; z-index: 1100; 
+        }
+        .logo-img { width: 42px; margin-bottom: 30px; }
+        .sidebar-link { color: #adb5bd; font-size: 1.4rem; margin-bottom: 25px; transition: 0.3s; text-decoration: none; }
+        .sidebar-link:hover, .sidebar-link.active-link { color: var(--primary-blue); }
+        .logout-btn { margin-top: auto; color: #ff4757; font-size: 1.5rem; }
+
+        /* Contenido Principal */
+        .main-content { margin-left: 80px; padding: 40px 60px; transition: 0.3s; }
+
+        /* Perfil Usuario */
+        .user-profile-badge {
+            background: white; padding: 6px 6px 6px 18px; border-radius: 40px;
+            display: flex; align-items: center; box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+        .user-name { font-weight: 800; color: var(--deep-blue); font-size: 0.95rem; margin-right: 15px; }
+        .user-avatar { 
+            width: 40px; height: 40px; background: linear-gradient(135deg, var(--primary-blue), #4facfe);
+            color: white; border-radius: 50%; display: flex; align-items: center; 
+            justify-content: center; font-weight: 900;
+        }
+
+        .header-title { color: var(--deep-blue); font-weight: 900; font-size: 2.6rem; letter-spacing: -1.5px; }
+        .header-subtitle { color: #718096; font-weight: 600; font-size: 1.1rem; }
+
+
+
+        .header-title { color: var(--deep-blue); font-weight: 900; font-size: 2.2rem; letter-spacing: -1.5px; }
+        
+        /* Botones y Filtros */
+        .btn-add-pro {
+            background: var(--primary-blue); color: white; border-radius: 14px;
+            padding: 12px 24px; font-weight: 800; border: none; transition: 0.3s;
+            box-shadow: 0 6px 15px rgba(30, 91, 160, 0.2);
+        }
+        .btn-add-pro:hover { background: var(--deep-blue); color: white; text-decoration: none; }
+        
+        .filter-card {
+            background: white; border-radius: 20px; padding: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.05);
+        }
+        .form-control-custom {
+            border-radius: 12px; border: 2px solid #edf2f7; background: #f8fafc; font-weight: 600; height: 45px;
+        }
+
+        /* Tabla Estilo Glass */
+        .glass-card {
+            background: white; border-radius: 24px; overflow: hidden;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.02);
+        }
+        .table thead th { background: #f8fafc; color: #718096; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; border: none; }
+        .table td { vertical-align: middle; }
+        
+        /* Badges de Estado */
+        .badge-pro { border-radius: 8px; padding: 6px 12px; font-weight: 800; font-size: 0.75rem; display: inline-block; }
+        .badge-anaquel { background: #f1f5f9; color: #475569; }
+        .badge-stock-ok { background: #f0fff4; color: #276749; }
+        .badge-stock-low { background: #fff5f5; color: #c53030; }
+        .badge-warning-vence { background: #fff5f0; color: #d46b08; border: 1px solid #ffd591; }
+
+        /* Acciones */
+        .btn-action-round { width: 38px; height: 38px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; border: none; transition: 0.2s; }
+        .btn-edit-soft { background: #e0f2fe; color: #0369a1; }
+        .btn-delete-soft { background: #fee2e2; color: #b91c1c; }
+
+        /* Reglas de Impresión */
+        @media print {
+            .sidebar, .no-print, .filter-card, .btn-add-pro, .user-profile-badge, .btn-action-round { display: none !important; }
+            body { background: white !important; }
+            .main-content { margin: 0 !important; padding: 0 !important; width: 100% !important; }
+            .glass-card { box-shadow: none !important; border: none !important; border-radius: 0; }
+            .table { width: 100% !important; border-collapse: collapse; }
+            .table th { background: #eee !important; color: black !important; border: 1px solid #ddd !important; }
+            .table td { border: 1px solid #ddd !important; }
+            .header-title { text-align: center; font-size: 24pt; }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar { display: none; }
+            .main-content { margin-left: 0; padding: 20px; }
+        }
+    </style>
+</head>
+<body>
+
+<aside class="sidebar no-print">
+    <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo" class="logo-img">
+    <a href="{{ url_for('inicio_farmacia_route') }}" class="sidebar-link" title="Inicio"><i class="fas fa-th-large"></i></a>
+    <a href="{{ url_for('punto_venta') }}" class="sidebar-link" title="Punto de Venta"><i class="fas fa-cash-register"></i></a>
+    <a href="{{ url_for('listar_productos') }}" class="sidebar-link active-link" title="Inventario"><i class="fas fa-boxes-stacked"></i></a>
+    <a href="{{ url_for('modulo_reportes_dashboard') }}" class="sidebar-link" title="Reportes"><i class="fas fa-file-waveform"></i></a>
+    <a href="{{ url_for('gestion_servicios') }}" class="sidebar-link active" title="Servicios Médicos"><i class="fas fa-stethoscope"></i></a>
+    <a href="{{ url_for('listar_usuarios') }}" class="sidebar-link" title="Usuarios"><i class="fas fa-users-cog"></i></a>
+    <a href="{{ url_for('Salir') }}" class="logout-btn" title="Cerrar Sesión"><i class="fas fa-sign-out-alt"></i></a>
+</aside>
+
+<main class="main-content">
+    <header class="d-flex justify-content-between align-items-center mb-5 no-print">
+        <div>
+            <h1 class="header-title">Inventario Activo</h1>
+            <p class="text-muted font-weight-bold">Gestión de stock, lotes y caducidades</p>
+        </div>
+                <div class="user-profile-badge">
+                    <span class="mr-3 small font-weight-bold text-uppercase">{{ current_user.nombre }}</span>
+                    <div class="user-avatar">{{ current_user.nombre[0] | upper }}</div>
+                </div>
+    </header>
+
+    <div class="d-flex justify-content-between align-items-start mb-4 no-print">
+        <div class="flex-grow-1 mr-4">
+            <form id="searchForm" class="filter-card">
+                <div class="row">
+                    <div class="col-md-7">
+                        <div class="input-group">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text bg-transparent border-0"><i class="fas fa-search text-muted"></i></span>
+                            </div>
+                            <input type="text" id="searchInput" name="search" class="form-control form-control-custom border-left-0" 
+                                   placeholder="Buscar por nombre o código de barras..." value="{{ search_query }}">
+                        </div>
+                    </div>
+                    <div class="col-md-5">
+                        <select id="alertaSelect" name="alerta" class="form-control form-control-custom">
+                            <option value="">Todos los productos</option>
+                            <option value="bajo" {% if alerta_stock == 'bajo' %}selected{% endif %}>⚠️ Stock Bajo / Crítico</option>
+                            <option value="caducidad" {% if alerta_stock == 'caducidad' %}selected{% endif %}>🕒 Próximos a Vencer (15 días)</option>
+                        </select>
+                    </div>
+                </div>
+            </form>
+        </div>
+        <div class="d-flex flex-column" style="gap: 10px;">
+            <a href="{{ url_for('agregar_editar_producto') }}" class="btn-add-pro text-center">
+                <i class="fas fa-plus mr-2"></i> NUEVO PRODUCTO
+            </a>
+            <button onclick="window.print()" class="btn btn-dark font-weight-bold shadow-sm" style="border-radius:14px; padding: 10px;">
+                <i class="fas fa-print mr-2"></i> IMPRIMIR LISTA
+            </button>
+        </div>
+    </div>
+
+    <div class="glass-card">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th style="width: 30%;">Producto / Ubicación</th>
+                        <th>Detalles Técnicos</th>
+                        <th class="text-center">Existencia</th>
+                        <th>Precio Venta</th>
+                        <th class="text-right no-print">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for producto in productos %}
+                    <tr>
+                        <td>
+                            <div class="font-weight-bold" style="color: var(--deep-blue); font-size: 1.1rem;">{{ producto.nombre }}</div>
+                            <span class="badge badge-pro badge-anaquel">
+                                <i class="fas fa-map-marker-alt mr-1"></i> {{ producto.nombre_seccion or 'Sin Ubicación' }}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="small font-weight-bold text-muted">{{ producto.codigo_barras }}</div>
+                            <div class="small text-muted mb-1">Lote: <strong>{{ producto.lote or 'N/A' }}</strong></div>
+                            
+                            {% if producto.fecha_caducidad %}
+                                {% set dias = (producto.fecha_caducidad - hoy).days %}
+                                {% if dias < 0 %}
+                                    <span class="badge-pro badge-stock-low">VENCIDO ({{ producto.fecha_caducidad.strftime('%d/%m/%Y') }})</span>
+                                {% elif dias <= 15 %}
+                                    <span class="badge-pro badge-warning-vence">VENCE EN {{ dias }} DÍAS</span>
+                                {% else %}
+                                    <span class="badge-pro badge-anaquel"><i class="far fa-calendar-alt mr-1"></i> {{ producto.fecha_caducidad.strftime('%d/%m/%Y') }}</span>
+                                {% endif %}
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            {% if producto.stock_actual <= producto.stock_minimo %}
+                                <div class="badge-pro badge-stock-low" style="font-size: 1rem;">{{ producto.stock_actual }} pz</div>
+                                <div class="text-danger small font-weight-bold mt-1">STOCK MÍNIMO</div>
+                            {% else %}
+                                <div class="badge-pro badge-stock-ok" style="font-size: 1rem;">{{ producto.stock_actual }} pz</div>
+                            {% endif %}
+                        </td>
+                        <td class="font-weight-bold" style="color: var(--success-green); font-size: 1.1rem;">
+                            ${{ "{:,.2f}".format(producto.precio_publico) }}
+                        </td>
+                        <td class="text-right no-print">
+                            <a href="{{ url_for('agregar_editar_producto', id=producto.id) }}" class="btn-action-round btn-edit-soft" title="Editar"><i class="fas fa-pen"></i></a>
+                            <form action="{{ url_for('eliminar_producto', id=producto.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('¿Está seguro de eliminar este producto? Esta acción no se puede deshacer.');">
+                                <button type="submit" class="btn-action-round btn-delete-soft ml-1" title="Eliminar"><i class="fas fa-trash-alt"></i></button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="text-center py-5 text-muted">
+                            <i class="fas fa-box-open fa-3x mb-3 d-block" style="opacity: 0.2;"></i>
+                            <span class="font-weight-bold">No se encontraron productos en el inventario.</span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="mt-4 no-print d-flex justify-content-between align-items-center">
+        <p class="text-muted">Total de productos listados: <strong>{{ productos|length }}</strong></p>
+    </div>
+</main>
+
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+<script>
+$(document).ready(function() {
+    function performSearch() {
+        const query = $('#searchInput').val();
+        const alerta = $('#alertaSelect').val();
+        // Construye la URL con los parámetros actuales
+        window.location.href = "{{ url_for('listar_productos') }}?search=" + encodeURIComponent(query) + "&alerta=" + alerta;
+    }
+
+    // Disparar búsqueda al cambiar el filtro de alerta
+    $('#alertaSelect').on('change', performSearch);
+
+    // Disparar búsqueda al presionar Enter en el buscador
+    $('#searchInput').on('keypress', function(e) { 
+        if(e.which == 13) {
+            e.preventDefault();
+            performSearch(); 
+        }
+    });
+
+    // Validación para redirigir si el servidor se corta o hay inactividad
+    // [Controlado por la lógica de sesión del backend y url_for('Salir')]
+});
+</script>
+</body>
+</html>

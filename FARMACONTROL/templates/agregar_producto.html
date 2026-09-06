@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ 'Actualizar Stock' if producto else 'Nuevo Medicamento' }} | FarmaControl</title>
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        :root { 
+            --primary-blue: #1e5ba0; 
+            --deep-blue: #0d3b66;
+            --success-green: #2ecc71;
+            --bg-gray: #f0f2f5; 
+        }
+        
+        body { background-color: var(--bg-gray); font-family: 'Inter', sans-serif; margin: 0; min-height: 100vh; }
+
+        /* Sidebar Responsivo */
+        .sidebar { 
+            width: 80px; height: 100vh; background: #fff; position: fixed; 
+            left: 0; top: 0; border-right: 1px solid #e1e4e8; 
+            display: flex; flex-direction: column; align-items: center; 
+            padding: 25px 0; z-index: 1100; transition: 0.3s;
+        }
+        .logo-img { width: 42px; margin-bottom: 30px; }
+        .sidebar-link { color: #adb5bd; font-size: 1.4rem; margin-bottom: 25px; transition: 0.3s; }
+        .sidebar-link:hover { color: var(--primary-blue); }
+        .logout-btn { margin-top: auto; color: #ff4757; font-size: 1.5rem; }
+
+        /* Estructura Principal */
+        .main-content { margin-left: 80px; padding: 40px 60px; transition: 0.3s; }
+
+        /* Perfil Premium */
+        .user-profile-badge {
+            background: white; padding: 6px 6px 6px 18px; border-radius: 40px;
+            display: flex; align-items: center; box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+        .user-name { font-weight: 800; color: var(--deep-blue); font-size: 0.95rem; margin-right: 15px; }
+        .user-avatar { 
+            width: 40px; height: 40px; background: linear-gradient(135deg, var(--primary-blue), #4facfe);
+            color: white; border-radius: 50%; display: flex; align-items: center; 
+            justify-content: center; font-weight: 900;
+        }
+
+        .header-title { color: var(--deep-blue); font-weight: 900; font-size: 2.6rem; letter-spacing: -1.5px; }
+        .header-subtitle { color: #718096; font-weight: 600; font-size: 1.1rem; }
+
+        /* Card de Formulario */
+        .glass-card {
+            background: white; border-radius: 24px; padding: 40px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.02);
+            margin-bottom: 20px;
+        }
+
+        /* Estilos de Formulario */
+        .form-label { 
+            font-weight: 800; color: #718096; font-size: 0.72rem; 
+            text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px;
+        }
+        .form-control-custom {
+            border-radius: 12px; border: 2px solid #edf2f7; padding: 12px 18px;
+            font-weight: 700; color: var(--deep-blue); transition: 0.3s; background: #f8fafc;
+            height: auto;
+        }
+        .form-control-custom:focus {
+            border-color: var(--primary-blue); background: white;
+            box-shadow: 0 0 0 4px rgba(30, 91, 160, 0.1); outline: none;
+        }
+
+        .stock-info-box {
+            background: #f0fff4; border-radius: 12px; padding: 12px; border: 1px solid #9ae6b4;
+            color: #276749; font-weight: 700; font-size: 0.85rem;
+        }
+
+        /* Botón Guardar */
+        .btn-submit-pro {
+            background: var(--primary-blue); color: white; border-radius: 14px;
+            padding: 15px 40px; font-weight: 800; border: none; transition: 0.3s;
+            box-shadow: 0 10px 20px rgba(30, 91, 160, 0.2);
+        }
+        .btn-submit-pro:hover { transform: translateY(-3px); background: var(--deep-blue); color: white; }
+        
+        .custom-switch .custom-control-label::before { height: 1.5rem; width: 2.5rem; border-radius: 1rem; }
+        .custom-switch .custom-control-label::after { width: calc(1.5rem - 4px); height: calc(1.5rem - 4px); border-radius: 1rem; }
+
+        /* MEDIA QUERIES */
+        @media (max-width: 991px) {
+            .main-content { padding: 30px 25px; }
+            .glass-card { padding: 30px 20px; }
+            .header-flex-stack { flex-direction: column; align-items: flex-start !important; }
+            .user-profile-badge { margin-top: 15px; }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar { 
+                width: 100%; height: 60px; top: auto; bottom: 0; 
+                flex-direction: row; padding: 0; border-right: none; 
+                border-top: 1px solid #e1e4e8; justify-content: space-around;
+            }
+            .logo-img { display: none; }
+            .sidebar-link { margin-bottom: 0; font-size: 1.2rem; }
+            .logout-btn { margin-top: 0; font-size: 1.2rem; }
+            .main-content { margin-left: 0; padding-bottom: 100px; padding-top: 20px; }
+            .user-name { display: none; }
+            .h1-title { font-size: 1.6rem; }
+            .footer-actions { flex-direction: column-reverse; width: 100%; }
+            .btn-submit-pro { width: 100%; margin-bottom: 15px; margin-right: 0 !important; }
+            .btn-link { text-align: center; width: 100%; margin-right: 0 !important; }
+        }
+    </style>
+</head>
+<body>
+
+    <aside class="sidebar">
+        <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo" class="logo-img">
+        <a href="{{ url_for('inicio_farmacia_route') }}" class="sidebar-link" title="Inicio"><i class="fas fa-th-large"></i></a>
+        <a href="{{ url_for('punto_venta') }}" class="sidebar-link" title="Punto de Venta"><i class="fas fa-cash-register"></i></a>
+        <a href="{{ url_for('listar_productos') }}" class="sidebar-link" title="Inventario"><i class="fas fa-boxes-stacked"></i></a>
+        <a href="{{ url_for('modulo_reportes_dashboard') }}" class="sidebar-link" title="Reportes"><i class="fas fa-file-waveform"></i></a>
+        <a href="{{ url_for('gestion_servicios') }}" class="sidebar-link" title="Servicios Médicos"><i class="fas fa-stethoscope"></i></a>
+        <a href="{{ url_for('listar_usuarios') }}" class="sidebar-link" title="Usuarios"><i class="fas fa-users-cog"></i></a>
+        <a href="{{ url_for('Salir') }}" class="logout-btn" title="Cerrar Sesión"><i class="fas fa-sign-out-alt"></i></a>
+    </aside>
+
+    <main class="main-content">
+        <header class="d-flex justify-content-between align-items-center mb-5 header-flex-stack">
+            <div>
+                <a href="{{ url_for('listar_productos') }}" class="text-muted font-weight-bold small text-uppercase" style="text-decoration:none;">
+                    <i class="fas fa-arrow-left mr-1"></i> Volver al Inventario
+                </a>
+                <h1 class="font-weight-900 mt-2 h1-title" style="color: var(--deep-blue); letter-spacing: -1px;">
+                    {{ 'Actualizar Existencia' if producto else 'Registrar Medicamento' }}
+                </h1>
+            </div>
+            <div class="user-profile-badge">
+                <span class="user-name text-uppercase">{{ current_user.nombre }}</span>
+                <div class="user-avatar shadow">{{ current_user.nombre[0] | upper }}</div>
+            </div>
+        </header>
+
+        <div class="glass-card">
+            <form method="POST">
+                <div class="row">
+                    <div class="col-lg-7 col-md-12 form-group mb-4">
+                        <label class="form-label">Nombre Comercial / Genérico</label>
+                        <input type="text" name="nombre" class="form-control form-control-custom" value="{{ producto.nombre if producto else '' }}" placeholder="Ej. Amoxicilina 500mg" required>
+                    </div>
+                    <div class="col-lg-5 col-md-12 form-group mb-4">
+                        <label class="form-label">Código de Barras</label>
+                        <input type="text" name="codigo_barras" class="form-control form-control-custom" value="{{ producto.codigo_barras if producto else '' }}" placeholder="Código del empaque" required>
+                    </div>
+
+                    <div class="col-md-4 form-group mb-4">
+                        <label class="form-label">Lote</label>
+                        <input type="text" name="lote" class="form-control form-control-custom" value="{{ producto.lote if producto else '' }}" required>
+                    </div>
+                    <div class="col-md-4 form-group mb-4">
+                        <label class="form-label">Fecha de Caducidad</label>
+                        <input type="date" name="fecha_caducidad" class="form-control form-control-custom" value="{{ producto.fecha_caducidad if producto else '' }}" required>
+                    </div>
+                    <div class="col-md-4 form-group mb-4">
+                        <label class="form-label">Anaquel (Ubicación)</label>
+                        <select name="seccion_id" class="form-control form-control-custom" required>
+                            <option value="">Seleccione ubicación...</option>
+                            {% for seccion in secciones %}
+                            <option value="{{ seccion.id }}" {% if producto and producto.seccion_id == seccion.id %}selected{% endif %}>
+                                Anaquel {{ seccion.nombre }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="col-12"><hr class="my-3" style="opacity: 0.1;"></div>
+
+                    <div class="col-lg-4 col-md-12 form-group mb-4">
+                        <label class="form-label text-primary">
+                            {% if producto %} <i class="fas fa-plus-circle"></i> Sumar a Existencia {% else %} Cantidad Inicial {% endif %}
+                        </label>
+                        <input type="number" name="stock_entrada" class="form-control form-control-custom" value="0" min="0" required style="background: #ebf4ff; border-color: #bee3f8;">
+                        {% if producto %}
+                            <div class="stock-info-box mt-3">
+                                <i class="fas fa-warehouse mr-2"></i> Existencia actual: <b>{{ producto.stock_actual }}</b>
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="col-lg-2 col-md-4 col-6 form-group mb-4">
+                        <label class="form-label">Alerta Mínima</label>
+                        <input type="number" name="stock_minimo" class="form-control form-control-custom" value="{{ producto.stock_minimo if producto else '5' }}" required>
+                    </div>
+                    <div class="col-lg-3 col-md-4 col-6 form-group mb-4">
+                        <label class="form-label">Costo ($)</label>
+                        <input type="number" step="0.01" name="precio_costo" class="form-control form-control-custom" value="{{ producto.precio_costo if producto else '' }}" required>
+                    </div>
+                    <div class="col-lg-3 col-md-4 col-12 form-group mb-4">
+                        <label class="form-label">Venta Público ($)</label>
+                        <input type="number" step="0.01" name="precio_publico" class="form-control form-control-custom" value="{{ producto.precio_publico if producto else '' }}" required style="color: var(--success-green);">
+                    </div>
+
+                    <div class="col-md-12 mt-2">
+                        <div class="custom-control custom-switch">
+                            <input type="checkbox" class="custom-control-input" id="antibiotico" name="antibiotico" value="1" {{ 'checked' if producto and producto.antibiotico else '' }}>
+                            <label class="custom-control-label font-weight-bold text-muted" for="antibiotico" style="padding-top: 2px; padding-left: 10px;">Requiere Receta Médica (Antibiótico)</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-end mt-5 pt-4 border-top footer-actions">
+                    <a href="{{ url_for('listar_productos') }}" class="btn btn-link text-muted font-weight-bold mr-md-4 mr-0" style="text-decoration: none;">Descartar</a>
+                    <button type="submit" class="btn btn-submit-pro">
+                        <i class="fas fa-save mr-2"></i> 
+                        {{ 'Guardar Cambios' if producto else 'Completar Registro' }}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reportes | FarmaControl</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root { 
+            --primary-blue: #1e5ba0; 
+            --deep-blue: #0d3b66;
+            --success-green: #2ecc71;
+            --bg-gray: #f0f2f5; 
+            --danger-red: #ff4757;
+        }
+        
+        body { 
+            background-color: var(--bg-gray); 
+            font-family: 'Inter', 'Segoe UI', sans-serif; 
+            margin: 0;
+            padding-top: 56px; /* Para el sidebar móvil */
+        }
+
+        /* Sidebar Responsive */
+        .sidebar { 
+            width: 80px; 
+            height: 100vh; 
+            background: #fff; 
+            position: fixed; 
+            left: 0; 
+            top: 0; 
+            border-right: 1px solid #e1e4e8; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            padding: 25px 0; 
+            z-index: 1100; 
+            transition: transform 0.3s ease;
+        }
+        
+        .logo-img { 
+            width: 42px; 
+            margin-bottom: 30px; 
+        }
+        
+        .sidebar-link { 
+            color: #adb5bd; 
+            font-size: 1.4rem; 
+            margin-bottom: 25px; 
+            transition: 0.3s; 
+            width: 100%;
+            text-align: center;
+            padding: 10px 0;
+        }
+        
+        .sidebar-link:hover, .sidebar-link.active { 
+            color: var(--primary-blue); 
+            background-color: rgba(30, 91, 160, 0.05);
+        }
+        
+        .logout-btn { 
+            margin-top: auto; 
+            color: #ff4757; 
+            font-size: 1.5rem; 
+            width: 100%;
+            text-align: center;
+            padding: 10px 0;
+        }
+
+        /* Mobile Sidebar */
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%;
+                height: 56px;
+                flex-direction: row;
+                bottom: 0;
+                top: auto;
+                border-right: none;
+                border-top: 1px solid #e1e4e8;
+                justify-content: space-around;
+                padding: 0;
+            }
+            
+            .logo-img {
+                display: none;
+            }
+            
+            .sidebar-link, .logout-btn {
+                margin-bottom: 0;
+                margin-top: 0;
+                font-size: 1.2rem;
+                padding: 15px 0;
+                flex: 1;
+            }
+            
+            .logout-btn {
+                margin-top: 0;
+            }
+        }
+
+        /* Main Layout Responsive */
+        .main-content { 
+            margin-left: 80px; 
+            padding: 40px 60px; 
+            transition: margin-left 0.3s ease;
+        }
+        
+        @media (max-width: 992px) {
+            .main-content {
+                padding: 30px 40px;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .main-content {
+                margin-left: 0;
+                padding: 20px 15px;
+                margin-bottom: 70px; /* Espacio para el menú inferior */
+            }
+        }
+        
+        @media (max-width: 576px) {
+            .main-content {
+                padding: 15px;
+            }
+        }
+
+        /* Perfil de Usuario Responsive */
+        .user-profile-badge {
+            background: white; 
+            padding: 6px 6px 6px 18px; 
+            border-radius: 40px;
+            display: flex; 
+            align-items: center; 
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+        
+        .user-name { 
+            font-weight: 800; 
+            color: var(--deep-blue); 
+            font-size: 0.95rem; 
+            margin-right: 15px; 
+        }
+        
+        .user-avatar { 
+            width: 40px; 
+            height: 40px; 
+            background: linear-gradient(135deg, var(--primary-blue), #4facfe);
+            color: white; 
+            border-radius: 50%; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-weight: 900;
+        }
+        
+        @media (max-width: 768px) {
+            .user-profile-badge {
+                padding: 5px 5px 5px 12px;
+            }
+            
+            .user-name {
+                font-size: 0.85rem;
+                margin-right: 10px;
+            }
+            
+            .user-avatar {
+                width: 35px;
+                height: 35px;
+                font-size: 0.9rem;
+            }
+        }
+
+        /* Header Responsive */
+        .header-title { 
+            color: var(--deep-blue); 
+            font-weight: 900; 
+            font-size: 2.6rem; 
+            letter-spacing: -1.5px; 
+        }
+        
+        .header-subtitle { 
+            color: #718096; 
+            font-weight: 600; 
+            font-size: 1.1rem; 
+        }
+        
+        @media (max-width: 992px) {
+            .header-title {
+                font-size: 2.2rem;
+            }
+            
+            .header-subtitle {
+                font-size: 1rem;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .header-title {
+                font-size: 1.8rem;
+                letter-spacing: -0.5px;
+            }
+            
+            .header-subtitle {
+                font-size: 0.9rem;
+            }
+        }
+        
+        @media (max-width: 576px) {
+            .header-title {
+                font-size: 1.5rem;
+            }
+            
+            .header-subtitle {
+                font-size: 0.85rem;
+            }
+        }
+
+        /* Tarjetas de Estadísticas Responsive */
+        .stats-card {
+            background: white; 
+            border-radius: 25px; 
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05); 
+            border: 1px solid rgba(0,0,0,0.03);
+            transition: 0.3s;
+            height: 100%;
+            margin-bottom: 20px;
+        }
+        
+        .stats-card:hover { 
+            transform: translateY(-5px); 
+            box-shadow: 0 15px 40px rgba(0,0,0,0.1); 
+        }
+        
+        .stats-icon { 
+            width: 60px; 
+            height: 60px; 
+            border-radius: 18px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-size: 1.8rem;
+            margin-bottom: 20px;
+        }
+        
+        .stats-icon.sales { background: rgba(30, 91, 160, 0.1); color: var(--primary-blue); }
+        .stats-icon.stock { background: rgba(46, 204, 113, 0.1); color: var(--success-green); }
+        .stats-icon.antibiotic { background: rgba(255, 71, 87, 0.1); color: var(--danger-red); }
+        .stats-icon.cash { background: rgba(155, 89, 182, 0.1); color: #9b59b6; }
+        
+        .stats-number { 
+            font-size: 2.5rem; 
+            font-weight: 900; 
+            color: var(--deep-blue); 
+            line-height: 1; 
+        }
+        
+        .stats-label { 
+            color: #718096; 
+            font-weight: 700; 
+            font-size: 0.95rem; 
+            margin-top: 10px; 
+        }
+        
+        @media (max-width: 768px) {
+            .stats-card {
+                padding: 20px;
+                border-radius: 20px;
+            }
+            
+            .stats-icon {
+                width: 50px;
+                height: 50px;
+                font-size: 1.5rem;
+                margin-bottom: 15px;
+            }
+            
+            .stats-number {
+                font-size: 2rem;
+            }
+            
+            .stats-label {
+                font-size: 0.85rem;
+            }
+        }
+
+        /* Tarjetas de Reportes Responsive */
+        .report-card {
+            background: white; 
+            border-radius: 25px; 
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05); 
+            border: 1px solid rgba(0,0,0,0.03);
+            transition: 0.3s; 
+            height: 100%;
+            margin-bottom: 20px;
+        }
+        
+        .report-card:hover { 
+            transform: translateY(-5px); 
+            box-shadow: 0 15px 40px rgba(0,0,0,0.1); 
+        }
+        
+        .report-icon { 
+            width: 70px; 
+            height: 70px; 
+            border-radius: 20px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-size: 2rem;
+            margin-bottom: 25px;
+        }
+        
+        .report-icon.financial { background: rgba(30, 91, 160, 0.1); color: var(--primary-blue); }
+        .report-icon.antibiotics { background: rgba(255, 71, 87, 0.1); color: var(--danger-red); }
+        .report-icon.sales { background: rgba(46, 204, 113, 0.1); color: var(--success-green); }
+        .report-icon.products { background: rgba(241, 196, 15, 0.1); color: #f1c40f; }
+        .report-icon.stock { background: rgba(52, 152, 219, 0.1); color: #3498db; }
+        .report-icon.expiry { background: rgba(142, 68, 173, 0.1); color: #8e44ad; }
+        .report-icon.users { background: rgba(230, 126, 34, 0.1); color: #e67e22; }
+        .report-icon.clients { background: rgba(44, 62, 80, 0.1); color: #2c3e50; }
+        
+        .report-title { 
+            font-size: 1.5rem; 
+            font-weight: 900; 
+            color: var(--deep-blue); 
+            margin-bottom: 15px; 
+        }
+        
+        .report-description { 
+            color: #718096; 
+            font-weight: 600; 
+            font-size: 0.9rem; 
+            line-height: 1.5; 
+            margin-bottom: 20px;
+        }
+        
+        .report-link { 
+            color: var(--primary-blue); 
+            font-weight: 900; 
+            font-size: 0.9rem; 
+            text-decoration: none; 
+        }
+        
+        .report-link:hover { 
+            text-decoration: underline; 
+        }
+        
+        @media (max-width: 992px) {
+            .report-card {
+                padding: 25px;
+            }
+            
+            .report-icon {
+                width: 60px;
+                height: 60px;
+                font-size: 1.8rem;
+                margin-bottom: 20px;
+            }
+            
+            .report-title {
+                font-size: 1.3rem;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .report-card {
+                padding: 20px;
+                border-radius: 20px;
+            }
+            
+            .report-icon {
+                width: 50px;
+                height: 50px;
+                font-size: 1.5rem;
+                margin-bottom: 15px;
+            }
+            
+            .report-title {
+                font-size: 1.2rem;
+            }
+            
+            .report-description {
+                font-size: 0.85rem;
+            }
+            
+            .report-link {
+                font-size: 0.85rem;
+            }
+        }
+
+        /* Alertas Responsive */
+        .alert {
+            border-radius: 18px !important;
+            font-weight: 700 !important;
+        }
+        
+        @media (max-width: 576px) {
+            .alert {
+                margin-left: 0;
+                margin-right: 0;
+            }
+        }
+
+        /* Títulos de sección */
+        h2.mb-4 {
+            color: var(--deep-blue); 
+            font-weight: 900; 
+            font-size: 1.8rem;
+        }
+        
+        @media (max-width: 768px) {
+            h2.mb-4 {
+                font-size: 1.5rem;
+                text-align: center;
+            }
+        }
+        
+        @media (max-width: 576px) {
+            h2.mb-4 {
+                font-size: 1.3rem;
+            }
+        }
+
+        /* Header Responsive */
+        @media (max-width: 576px) {
+            header.d-flex {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .user-profile-badge {
+                margin-top: 15px;
+                align-self: center;
+            }
+        }
+
+        /* Ajustes de columnas Bootstrap */
+        @media (max-width: 768px) {
+            .row {
+                margin-left: -10px;
+                margin-right: -10px;
+            }
+            
+            .col-md-3, .col-md-4 {
+                padding-left: 10px;
+                padding-right: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<aside class="sidebar">
+    <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo" class="logo-img">
+    <a href="{{ url_for('index') }}" class="sidebar-link" title="Inicio"><i class="fas fa-th-large"></i></a>
+    <a href="{{ url_for('punto_venta') }}" class="sidebar-link" title="Punto de Venta"><i class="fas fa-cash-register"></i></a>
+    <a href="{{ url_for('listar_productos') }}" class="sidebar-link" title="Inventario"><i class="fas fa-boxes-stacked"></i></a>
+    
+    {% if current_user.rol == 1 %}
+    <a href="{{ url_for('modulo_reportes_dashboard') }}" class="sidebar-link active" title="Reportes"><i class="fas fa-file-waveform"></i></a>
+    <a href="{{ url_for('gestion_servicios') }}" class="sidebar-link" title="Servicios Médicos"><i class="fas fa-stethoscope"></i></a>
+    <a href="{{ url_for('listar_usuarios') }}" class="sidebar-link" title="Usuarios"><i class="fas fa-users-cog"></i></a>
+    {% endif %}
+    
+    <a href="{{ url_for('Salir') }}" class="logout-btn" title="Cerrar Sesión"><i class="fas fa-sign-out-alt"></i></a>
+</aside>
+
+    <main class="main-content">
+        <header class="d-flex justify-content-between align-items-center mb-5 flex-md-row flex-column">
+            <div class="text-center text-md-left mb-3 mb-md-0">
+                <h1 class="header-title">Panel de Analytics</h1>
+                <p class="header-subtitle">Estadísticas en tiempo real y reportes detallados</p>
+            </div>
+            <div class="user-profile-badge">
+                <span class="user-name text-uppercase">{{ current_user.nombre }}</span>
+                <div class="user-avatar shadow">{{ current_user.nombre[0] | upper }}</div>
+            </div>
+        </header>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{ category }} alert-dismissible fade show mb-4 border-0 shadow-sm" style="border-radius: 18px; font-weight: 700;">
+                <i class="fas fa-info-circle mr-2"></i> {{ message }}
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        <!-- Estadísticas del Día -->
+        <h2 class="mb-4 text-center text-md-left">Estadísticas del Día</h2>
+        <div class="row mb-5">
+            <div class="col-lg-3 col-md-6 col-sm-6 col-12">
+                <div class="stats-card">
+                    <div class="stats-icon sales">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <div class="stats-number">{{ ventas_hoy.ingresos_hoy|float|round(2) }}</div>
+                    <div class="stats-label">Ingresos de Hoy (MXN)</div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6 col-sm-6 col-12">
+                <div class="stats-card">
+                    <div class="stats-icon stock">
+                        <i class="fas fa-box-open"></i>
+                    </div>
+                    <div class="stats-number">{{ stock_bajo.stock_bajo }}</div>
+                    <div class="stats-label">Productos con Stock Bajo</div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6 col-sm-6 col-12">
+                <div class="stats-card">
+                    <div class="stats-icon antibiotic">
+                        <i class="fas fa-pills"></i>
+                    </div>
+                    <div class="stats-number">{{ antibioticos_hoy.antibioticos_hoy }}</div>
+                    <div class="stats-label">Antibióticos Vendidos Hoy</div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6 col-sm-6 col-12">
+                <div class="stats-card">
+                    <div class="stats-icon cash">
+                        <i class="fas fa-cash-register"></i>
+                    </div>
+                    <div class="stats-number">{{ cortes_abiertos.cortes_abiertos }}</div>
+                    <div class="stats-label">Cortes de Caja Abiertos</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reportes Disponibles -->
+        <h2 class="mb-4 text-center text-md-left">Reportes Detallados</h2>
+        <div class="row">
+            <!-- Reporte Financiero -->
+            <div class="col-xl-4 col-lg-4 col-md-6 col-sm-12 mb-4">
+                <div class="report-card">
+                    <div class="report-icon financial">
+                        <i class="fas fa-money-bill-wave"></i>
+                    </div>
+                    <h3 class="report-title">Reporte Financiero</h3>
+                    <p class="report-description">
+                        Análisis detallado de ingresos, ganancias, métodos de pago y tendencias de ventas.
+                    </p>
+                    <a href="{{ url_for('reporte_financiero') }}" class="report-link">
+                        Ver Reporte <i class="fas fa-arrow-right ml-1"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Reporte de Antibióticos -->
+            <div class="col-xl-4 col-lg-4 col-md-6 col-sm-12 mb-4">
+                <div class="report-card">
+                    <div class="report-icon antibiotics">
+                        <i class="fas fa-prescription-bottle-medical"></i>
+                    </div>
+                    <h3 class="report-title">Reporte de Antibióticos</h3>
+                    <p class="report-description">
+                        Control y seguimiento de ventas de antibióticos, unidades vendidas y utilidad.
+                    </p>
+                    <a href="{{ url_for('reporte_antibioticos_mejorado') }}" class="report-link">
+                        Ver Reporte <i class="fas fa-arrow-right ml-1"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Reporte de Ventas Detalladas -->
+            <div class="col-xl-4 col-lg-4 col-md-6 col-sm-12 mb-4">
+                <div class="report-card">
+                    <div class="report-icon sales">
+                        <i class="fas fa-shopping-cart"></i>
+                    </div>
+                    <h3 class="report-title">Ventas Detalladas</h3>
+                    <p class="report-description">
+                        Listado completo de ventas con filtros avanzados por fecha, vendedor y método de pago.
+                    </p>
+                    <a href="{{ url_for('reporte_ventas_detalladas') }}" class="report-link">
+                        Ver Reporte <i class="fas fa-arrow-right ml-1"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Reporte de Productos -->
+            <div class="col-xl-4 col-lg-4 col-md-6 col-sm-12 mb-4">
+                <div class="report-card">
+                    <div class="report-icon products">
+                        <i class="fas fa-boxes"></i>
+                    </div>
+                    <h3 class="report-title">Productos Más Vendidos</h3>
+                    <p class="report-description">
+                        Ranking de productos por unidades vendidas, categorías y comparativa de ventas.
+                    </p>
+                    <a href="{{ url_for('ruta_reporte_productos') }}" class="report-link">
+                        Ver Reporte <i class="fas fa-arrow-right ml-1"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Reporte de Stock Bajo -->
+            <div class="col-xl-4 col-lg-4 col-md-6 col-sm-12 mb-4">
+                <div class="report-card">
+                    <div class="report-icon stock">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <h3 class="report-title">Stock Bajo</h3>
+                    <p class="report-description">
+                        Productos con stock mínimo o por debajo del punto de reorden. Valor del faltante.
+                    </p>
+                    <a href="{{ url_for('ruta_reporte_stock') }}" class="report-link">
+                        Ver Reporte <i class="fas fa-arrow-right ml-1"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Reporte de Caducidad -->
+            <div class="col-xl-4 col-lg-4 col-md-6 col-sm-12 mb-4">
+                <div class="report-card">
+                    <div class="report-icon expiry">
+                        <i class="fas fa-calendar-times"></i>
+                    </div>
+                    <h3 class="report-title">Próximos a Caducar</h3>
+                    <p class="report-description">
+                        Productos con fecha de caducidad próxima (15 días) o ya vencidos.
+                    </p>
+                    <a href="{{ url_for('ruta_reporte_caducidad') }}" class="report-link">
+                        Ver Reporte <i class="fas fa-arrow-right ml-1"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Reporte de Personal -->
+            <div class="col-xl-4 col-lg-4 col-md-6 col-sm-12 mb-4">
+                <div class="report-card">
+                    <div class="report-icon users">
+                        <i class="fas fa-user-tie"></i>
+                    </div>
+                    <h3 class="report-title">Rendimiento de Personal</h3>
+                    <p class="report-description">
+                        Desempeño de vendedores: ventas, ticket promedio, días trabajados.
+                    </p>
+                    <a href="{{ url_for('ruta_reporte_usuarios') }}" class="report-link">
+                        Ver Reporte <i class="fas fa-arrow-right ml-1"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Reporte de Clientes -->
+            <div class="col-xl-4 col-lg-4 col-md-6 col-sm-12 mb-4">
+                <div class="report-card">
+                    <div class="report-icon clients">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <h3 class="report-title">Clientes y Fidelidad</h3>
+                    <p class="report-description">
+                        Clientes más frecuentes, gasto promedio y análisis de fidelización.
+                    </p>
+                    <a href="{{ url_for('ruta_reporte_clientes') }}" class="report-link">
+                        Ver Reporte <i class="fas fa-arrow-right ml-1"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        window.setTimeout(function() { 
+            $(".alert").fadeTo(500, 0).slideUp(500, function(){ 
+                $(this).remove(); 
+            }); 
+        }, 3000);
+        
+        // Ajuste adicional para móviles
+        $(document).ready(function() {
+            function adjustLayout() {
+                if ($(window).width() <= 768) {
+                    $('body').addClass('mobile-view');
+                } else {
+                    $('body').removeClass('mobile-view');
+                }
+            }
+            
+            // Ejecutar al cargar y al redimensionar
+            adjustLayout();
+            $(window).resize(adjustLayout);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Usuarios | FarmaControl</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root { 
+            --primary-blue: #1e5ba0; 
+            --deep-blue: #0d3b66;
+            --success-green: #2ecc71;
+            --bg-gray: #f0f2f5; 
+            --danger-red: #ff4757;
+        }
+        
+        body { background-color: var(--bg-gray); font-family: 'Inter', 'Segoe UI', sans-serif; margin: 0; }
+
+        /* Sidebar Pro */
+        .sidebar { 
+            width: 80px; height: 100vh; background: #fff; position: fixed; 
+            left: 0; top: 0; border-right: 1px solid #e1e4e8; 
+            display: flex; flex-direction: column; align-items: center; 
+            padding: 25px 0; z-index: 1100; 
+        }
+        .logo-img { width: 42px; margin-bottom: 30px; }
+        .sidebar-link { color: #adb5bd; font-size: 1.4rem; margin-bottom: 25px; transition: 0.3s; }
+        .sidebar-link:hover, .sidebar-link.active { color: var(--primary-blue); }
+        .logout-btn { margin-top: auto; color: #ff4757; font-size: 1.5rem; }
+
+        /* Main Layout */
+        .main-content { margin-left: 80px; padding: 40px 60px; }
+
+        /* Perfil de Usuario Premium */
+        .user-profile-badge {
+            background: white; padding: 6px 6px 6px 18px; border-radius: 40px;
+            display: flex; align-items: center; box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+        .user-name { font-weight: 800; color: var(--deep-blue); font-size: 0.95rem; margin-right: 15px; }
+        .user-avatar { 
+            width: 40px; height: 40px; background: linear-gradient(135deg, var(--primary-blue), #4facfe);
+            color: white; border-radius: 50%; display: flex; align-items: center; 
+            justify-content: center; font-weight: 900;
+        }
+
+        .header-title { color: var(--deep-blue); font-weight: 900; font-size: 2.6rem; letter-spacing: -1.5px; }
+        .header-subtitle { color: #718096; font-weight: 600; font-size: 1.1rem; }
+
+        /* Card y Tabla */
+        .user-card {
+            background: white; border-radius: 35px; padding: 0;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.02);
+            overflow: hidden;
+        }
+        .table thead th { 
+            background: #fafbfc; color: var(--deep-blue); 
+            font-weight: 800; text-transform: uppercase; font-size: 0.75rem;
+            letter-spacing: 1px; border-top: none; padding: 20px 25px;
+        }
+        .table td { vertical-align: middle; padding: 20px 25px; color: #4a5568; font-weight: 600; }
+        
+        /* Buscador */
+        .search-container {
+            background: white; border-radius: 18px; border: 1px solid #e2e8f0;
+            padding: 2px 15px; display: flex; align-items: center;
+        }
+        .search-input { border: none; padding: 10px; font-weight: 600; outline: none; width: 100%; }
+
+        /* Botones */
+        .btn-new-user {
+            background: var(--primary-blue); color: white; border: none;
+            padding: 12px 25px; border-radius: 18px; font-weight: 700;
+            box-shadow: 0 5px 15px rgba(30, 91, 160, 0.2);
+        }
+        .btn-new-user:hover { color: white; opacity: 0.9; transform: translateY(-2px); }
+
+        .btn-action-circle {
+            width: 42px; height: 42px; border-radius: 14px; display: flex;
+            align-items: center; justify-content: center; transition: 0.2s;
+            margin: 0 4px; border: none;
+        }
+        .btn-edit { background: rgba(30, 91, 160, 0.1); color: var(--primary-blue); }
+        .btn-edit:hover { background: var(--primary-blue); color: white; }
+        .btn-delete { background: rgba(255, 71, 87, 0.1); color: var(--danger-red); }
+        .btn-delete:hover { background: var(--danger-red); color: white; }
+        
+        /* Filtros adicionales */
+        .filtro-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .filtro-select {
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 8px 15px;
+            font-size: 0.9rem;
+            background: white;
+            color: var(--deep-blue);
+            font-weight: 600;
+        }
+        
+        /* Estadísticas */
+        .stats-card {
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 25px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        }
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: 900;
+            color: var(--primary-blue);
+        }
+        .stat-label {
+            color: #718096;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+
+<aside class="sidebar">
+    <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo" class="logo-img">
+    <a href="{{ url_for('index') }}" class="sidebar-link" title="Inicio"><i class="fas fa-th-large"></i></a>
+    <a href="{{ url_for('punto_venta') }}" class="sidebar-link" title="Punto de Venta"><i class="fas fa-cash-register"></i></a>
+    <a href="{{ url_for('listar_productos') }}" class="sidebar-link" title="Inventario"><i class="fas fa-boxes-stacked"></i></a>
+    
+    {% if current_user.rol == 1 %}
+    <a href="{{ url_for('modulo_reportes_dashboard') }}" class="sidebar-link" title="Reportes"><i class="fas fa-file-waveform"></i></a>
+    <a href="{{ url_for('gestion_servicios') }}" class="sidebar-link" title="Servicios Médicos"><i class="fas fa-stethoscope"></i></a>
+    <a href="{{ url_for('listar_usuarios') }}" class="sidebar-link active" title="Usuarios"><i class="fas fa-users-cog"></i></a>
+    {% endif %}
+    
+    <a href="{{ url_for('Salir') }}" class="logout-btn" title="Cerrar Sesión"><i class="fas fa-sign-out-alt"></i></a>
+</aside>
+
+    <main class="main-content">
+        <header class="d-flex justify-content-between align-items-center mb-5">
+            <div>
+                <h1 style="font-weight: 900; color: var(--deep-blue); font-size: 2.6rem; letter-spacing: -1.5px;">Gestión de Personal</h1>
+                <p class="text-muted font-weight-bold">Administración de accesos y perfiles de usuario</p>
+            </div>
+            <div class="user-profile-badge">
+                <span class="user-name text-uppercase">{{ current_user.nombre }}</span>
+                <div class="user-avatar shadow">{{ current_user.nombre[0] | upper }}</div>
+            </div>
+        </header>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{ category }} alert-dismissible fade show mb-4 border-0 shadow-sm" style="border-radius: 18px; font-weight: 700;">
+                <i class="fas fa-info-circle mr-2"></i> {{ message }}
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        <!-- Estadísticas -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="stats-card">
+                    <div class="stat-number">{{ total_usuarios }}</div>
+                    <div class="stat-label">Usuarios Totales</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card">
+                    <div class="stat-number">{{ total_admin }}</div>
+                    <div class="stat-label">Administradores</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card">
+                    <div class="stat-number">{{ total_farmaceuticos }}</div>
+                    <div class="stat-label">Farmacéuticos</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card">
+                    <div class="stat-number">{{ usuarios|length }}</div>
+                    <div class="stat-label">Resultados Actuales</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filtros y búsqueda -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div class="d-flex align-items-center" style="flex: 1; gap: 15px;">
+                <form method="GET" action="{{ url_for('listar_usuarios') }}" class="d-flex align-items-center" style="flex: 1;">
+                    <div class="search-container" style="flex: 1;">
+                        <i class="fas fa-search text-muted"></i>
+                        <input type="text" name="search" class="search-input" placeholder="Buscar por nombre o correo..." value="{{ search_query or '' }}">
+                    </div>
+                </form>
+                
+                <form method="GET" action="{{ url_for('listar_usuarios') }}" class="d-flex align-items-center">
+                    <select name="rol" class="filtro-select" onchange="this.form.submit()">
+                        <option value="">Todos los roles</option>
+                        <option value="1" {% if rol_filter == '1' %}selected{% endif %}>Administradores</option>
+                        <option value="2" {% if rol_filter == '2' %}selected{% endif %}>Farmacéuticos</option>
+                    </select>
+                    {% if search_query %}
+                        <input type="hidden" name="search" value="{{ search_query }}">
+                    {% endif %}
+                </form>
+            </div>
+            <a href="{{ url_for('agregar_editar_usuario') }}" class="btn-new-user">
+                <i class="fas fa-user-plus mr-2"></i> NUEVO USUARIO
+            </a>
+        </div>
+
+        <!-- Tabla de usuarios -->
+        <div class="user-card">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Nombre del Personal</th>
+                            <th>Correo Electrónico</th>
+                            <th>Rol / Nivel</th>
+                            <th class="text-center">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for usuario in usuarios %}
+                        <tr>
+                            <td style="color: var(--deep-blue); font-weight: 800;">
+                                <div class="d-flex align-items-center">
+                                    <div class="mr-3 d-flex align-items-center justify-content-center" 
+                                         style="width: 35px; height: 35px; background: #f0f2f5; border-radius: 10px; 
+                                                color: var(--primary-blue); font-weight: 900;">
+                                        {{ usuario.nombre[0] | upper }}
+                                    </div>
+                                    <div>
+                                        {{ usuario.nombre }}
+                                        {% if usuario.status == 0 %}
+                                            <span class="badge badge-secondary ml-2" style="font-size: 0.7rem;">Inactivo</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </td>
+                            <td>{{ usuario.correo }}</td>
+                            <td>
+                                {% if usuario.rol == 1 %}
+                                    <span class="badge badge-primary px-3 py-2" style="border-radius: 10px;">
+                                        <i class="fas fa-crown mr-1"></i> Administrador
+                                    </span>
+                                {% else %}
+                                    <span class="badge badge-light border px-3 py-2" style="border-radius: 10px; color: var(--deep-blue);">
+                                        <i class="fas fa-user-md mr-1"></i> Farmacéutico
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                <div class="d-flex justify-content-center align-items-center">
+                                    <a href="{{ url_for('agregar_editar_usuario', id=usuario.id) }}" 
+                                       class="btn-action-circle btn-edit" title="Editar Perfil">
+                                        <i class="fas fa-pen"></i>
+                                    </a>
+                                    
+                                    {% if usuario.id != current_user.id %}
+                                    <form method="POST" 
+                                          action="{{ url_for('eliminar_usuario', id=usuario.id) }}" 
+                                          class="m-0">
+                                        <button type="submit" 
+                                                class="btn-action-circle btn-delete" 
+                                                onclick="return confirm('¿Seguro que deseas desactivar a este usuario?')" 
+                                                title="Desactivar Acceso">
+                                            <i class="fas fa-user-slash"></i>
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="4" class="text-center py-5">
+                                <i class="fas fa-users-slash d-block mb-3" style="font-size: 2.5rem; opacity: 0.2;"></i>
+                                <p class="text-muted font-weight-bold">No se encontraron usuarios.</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Información adicional -->
+        <div class="mt-4 text-muted" style="font-size: 0.85rem; font-weight: 600;">
+            <i class="fas fa-info-circle mr-2"></i> 
+            Mostrando <strong>{{ usuarios|length }}</strong> usuario(s) de <strong>{{ total_usuarios }}</strong> totales
+        </div>
+    </main>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        window.setTimeout(function() { 
+            $(".alert").fadeTo(500, 0).slideUp(500, function(){ 
+                $(this).remove(); 
+            }); 
+        }, 3000);
+        
+        // Auto-submit para filtros
+        $(document).ready(function() {
+            $('.filtro-select').on('change', function() {
+                $(this).closest('form').submit();
+            });
+        });
+    </script>
+</body>
+</html>

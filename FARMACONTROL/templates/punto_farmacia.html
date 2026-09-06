@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Punto de Venta | FarmaControl</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <style>
+        :root { 
+            --primary-blue: #1e5ba0; 
+            --deep-blue: #0d3b66;
+            --success-green: #2ecc71; 
+            --warning-orange: #f39c12;
+            --danger-red: #e74c3c;
+            --bg-gray: #f0f2f5; 
+            --accent-soft: #f0f7ff;
+        }
+        
+        /* Ajuste base para scroll */
+        body { 
+            background-color: var(--bg-gray); 
+            font-family: 'Inter', sans-serif; 
+            min-height: 100vh; 
+            margin: 0; 
+            display: flex; 
+            flex-direction: column;
+        }
+        
+        /* Sidebar Adaptable */
+        .sidebar { 
+            width: 80px; height: 100vh; background: #fff; position: fixed; 
+            left: 0; top: 0; border-right: 1px solid #e1e4e8; 
+            display: flex; flex-direction: column; align-items: center; 
+            padding: 25px 0; z-index: 1100; transition: 0.3s;
+        }
+        .logo-img { width: 42px; margin-bottom: 30px; }
+        .sidebar-link { color: #adb5bd; font-size: 1.4rem; margin-bottom: 25px; transition: 0.3s; }
+        .sidebar-link:hover { color: var(--primary-blue); transform: scale(1.1); }
+        .active-link { color: var(--primary-blue); }
+        .logout-btn { margin-top: auto; color: #ff4757; font-size: 1.5rem; transition: 0.3s; }
+
+        /* Contenedor Principal */
+        .main-content { 
+            flex: 1; 
+            margin-left: 80px; 
+            min-height: 100vh; 
+            display: flex; 
+            flex-direction: column; 
+            position: relative; 
+            transition: 0.3s;
+        }
+        
+        .user-profile-badge {
+            background: white; padding: 6px 6px 6px 18px; border-radius: 40px;
+            display: flex; align-items: center; box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            position: absolute; right: 20px; top: 15px; border: 1px solid rgba(0,0,0,0.05); z-index: 100;
+        }
+        .user-avatar { width: 34px; height: 34px; background: linear-gradient(135deg, var(--primary-blue), #4facfe); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 900; }
+
+        /* Header con botones flexibles */
+        .pos-header { padding: 80px 20px 20px 20px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+        .btn-command { 
+            font-weight: 800; border-radius: 14px; padding: 10px 18px; 
+            border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.05); transition: 0.3s;
+            flex: 1 1 auto; min-width: 140px; font-size: 0.85rem;
+        }
+        
+        .client-selector-badge { 
+            background: white; padding: 10px 20px; border-radius: 15px; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05); display: flex; align-items: center; border: 1px solid #eee;
+            flex: 1 1 100%; max-width: 400px;
+        }
+        .client-name-display { font-weight: 800; color: var(--primary-blue); font-size: 0.85rem; margin-left: 10px; text-transform: uppercase; }
+
+        /* Cuerpo del POS con Flex Wrap */
+        .pos-body { 
+            flex: 1; 
+            display: flex; 
+            flex-wrap: wrap; 
+            padding: 0 20px 20px 20px; 
+            gap: 20px; 
+        }
+        
+        .table-column { 
+            flex: 1; 
+            min-width: 300px; 
+            background: #fff; 
+            border-radius: 24px; 
+            display: flex; 
+            flex-direction: column; 
+            overflow: hidden; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.04); 
+        }
+        
+        .ticket-column { 
+            width: 380px; 
+            display: flex; 
+            flex-direction: column; 
+            flex-shrink: 0;
+        }
+        
+        .ticket-card { background: #fff; border-radius: 24px; flex: 1; display: flex; flex-direction: column; padding: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.04); }
+        .ticket-scroll { flex: 1; max-height: 400px; overflow-y: auto; background: #fafafa; border-radius: 15px; padding: 15px; border: 1px solid #f1f3f7; }
+        
+        .qty-input { width: 50px; text-align: center; border: 1px solid #ddd; border-radius: 8px; font-weight: bold; padding: 2px; }
+
+        .pos-footer { padding: 10px 20px 30px 20px; }
+        .search-input { border-radius: 18px; padding: 20px 25px; border: none; background: #fff; box-shadow: 0 10px 25px rgba(0,0,0,0.05); font-size: 1.1rem; width: 100%; }
+
+        /* Modales Responsivos */
+        .payment-btn { border: 1px solid #eee; border-radius: 20px; padding: 15px 10px; background: white; width: 100%; transition: 0.3s; height: 100%; cursor: pointer;}
+        .payment-btn i { font-size: 1.5rem; color: var(--primary-blue); display: block; margin-bottom: 10px; }
+        .item-row { width: 100%; text-align: left; padding: 15px 20px; border: none; border-bottom: 1px solid #f0f0f0; background: #fff; transition: 0.2s; outline: none; }
+        #ticket-iframe { width: 100%; height: 450px; border: none; border-radius: 15px; background: #eee;}
+
+        /* Indicador de antibiótico en la tabla */
+        .antibiotico-indicator {
+            display: inline-flex;
+            align-items: center;
+            background: rgba(231, 76, 60, 0.1);
+            color: var(--danger-red);
+            font-size: 0.7rem;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-weight: 800;
+            margin-left: 8px;
+        }
+
+        /* Badge para antibiótico en el ticket */
+        .antibiotico-badge {
+            display: inline-block;
+            background: var(--danger-red);
+            color: white;
+            font-size: 0.65rem;
+            padding: 1px 6px;
+            border-radius: 8px;
+            font-weight: 800;
+            margin-left: 5px;
+        }
+
+        /* Alerta de antibiótico */
+        .antibiotico-alert {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 2000;
+            background: linear-gradient(135deg, var(--danger-red), #c0392b);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(231, 76, 60, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            animation: slideDown 0.5s ease-out;
+        }
+
+        @keyframes slideDown {
+            0% { transform: translateX(-50%) translateY(-100%); opacity: 0; }
+            100% { transform: translateX(-50%) translateY(0); opacity: 1; }
+        }
+
+        .antibiotico-alert.hidden {
+            animation: slideUp 0.5s ease-out forwards;
+        }
+
+        @keyframes slideUp {
+            0% { transform: translateX(-50%) translateY(0); opacity: 1; }
+            100% { transform: translateX(-50%) translateY(-100%); opacity: 0; }
+        }
+
+        /* MEDIA QUERIES PARA CELULAR Y TABLET */
+        @media (max-width: 991px) {
+            .pos-body { flex-direction: column-reverse; }
+            .ticket-column { width: 100%; }
+            .table-column { min-height: 300px; }
+            .antibiotico-alert {
+                top: 10px;
+                left: 20px;
+                right: 20px;
+                transform: none;
+                width: auto;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar { 
+                width: 100%; height: 60px; top: auto; bottom: 0; 
+                flex-direction: row; padding: 0; border-right: none; 
+                border-top: 1px solid #e1e4e8; justify-content: space-around;
+            }
+            .logo-img { display: none; }
+            .sidebar-link { margin-bottom: 0; font-size: 1.2rem; }
+            .logout-btn { margin-top: 0; font-size: 1.2rem; }
+            .main-content { margin-left: 0; padding-bottom: 80px; }
+            .user-name { display: none; }
+            .pos-header { padding-top: 70px; }
+            .btn-command { font-size: 0.75rem; padding: 8px 12px; min-width: 45%; }
+            .client-selector-badge { max-width: 100%; }
+            .table-responsive { font-size: 0.8rem; }
+            .qty-input { width: 40px; }
+            .antibiotico-alert {
+                padding: 12px 20px;
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<aside class="sidebar">
+    <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo" class="logo-img">
+    <a href="{{ url_for('inicio_farmacia_route') }}" class="sidebar-link" title="Inicio"><i class="fas fa-th-large"></i></a>
+    <a href="{{ url_for('punto_farmacia') }}" class="sidebar-link active-link" title="Punto de Venta"><i class="fas fa-cash-register"></i></a>
+
+</aside>
+
+<div class="main-content">
+    <div class="user-profile-badge">
+        <span class="user-name text-uppercase mr-2 font-weight-bold">{{ current_user.nombre }}</span>
+        <div class="user-avatar">{{ current_user.nombre[0] | upper }}</div>
+    </div>
+
+    <header class="pos-header">
+        <button onclick="abrirSeleccion('productos')" class="btn btn-white btn-command text-primary shadow-sm">F1 PRODUCTOS</button>
+        <button onclick="abrirSeleccion('procedimientos')" class="btn btn-white btn-command text-success shadow-sm">F2 SERVICIOS</button>
+        <button onclick="abrirSeleccion('consultas')" class="btn btn-white btn-command text-info shadow-sm">F3 CONSULTAS</button>
+        <button onclick="abrirSeleccionClientes()" class="btn btn-white btn-command text-dark shadow-sm">F4 CLIENTES</button>
+        <div class="client-selector-badge">
+            <i class="fas fa-user-tag text-muted"></i>
+            <span class="client-name-display" id="client-name-display">CLIENTE GENERAL</span>
+        </div>
+    </header>
+
+    <div class="pos-body">
+        <div class="table-column shadow-sm">
+            <div class="table-responsive">
+                <table class="table align-middle">
+                    <thead class="thead-light">
+                        <tr>
+                            <th class="pl-4">Descripción</th>
+                            <th class="text-center">Cant.</th>
+                            <th>Precio</th>
+                            <th>Subtotal</th>
+                            <th class="text-right pr-4"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="carrito-table">
+                        <tr><td colspan="5" class="text-center py-5 text-muted">No hay productos en la venta actual</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="ticket-column">
+            <div class="ticket-card shadow-sm">
+                <h6 class="font-weight-bold text-muted mb-3">RESUMEN DE VENTA</h6>
+                <div class="ticket-scroll" id="ticket-items">
+                    <p class="text-center text-muted mt-5">Carrito vacío</p>
+                </div>
+                <div class="mt-3">
+                    <div class="d-flex justify-content-between mb-3">
+                        <span class="font-weight-bold">TOTAL</span>
+                        <span class="h3 font-weight-bold text-primary" id="total-ticket">$0.00</span>
+                    </div>
+                    <button class="btn btn-primary btn-block py-3 font-weight-bold shadow" style="border-radius: 15px;" onclick="finalizarVenta()">
+                        COBRAR (F12)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="pos-footer">
+        <input type="text" id="barcode-input" class="form-control search-input shadow" placeholder="Escanea código o presiona F1..." autofocus autocomplete="off">
+    </footer>
+</div>
+
+<!-- Alerta de antibiótico - NUEVO -->
+<div id="antibioticoAlert" class="antibiotico-alert hidden">
+    <i class="fas fa-exclamation-triangle fa-lg"></i>
+    <div>
+        <strong>¡ATENCIÓN!</strong> Esta venta contiene antibiótico(s)
+        <div class="small">Verifique que el cliente tenga receta médica válida</div>
+    </div>
+    <button class="btn btn-sm btn-outline-light ml-auto" onclick="cerrarAlertaAntibiotico()">
+        <i class="fas fa-times"></i>
+    </button>
+</div>
+
+<div class="modal fade" id="modalSeleccion" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content" style="border-radius: 20px;">
+            <div class="modal-header border-0">
+                <h5 class="modal-title font-weight-bold" id="modal-title-dynamic">Buscar</h5>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="px-4 pb-3">
+                <div class="input-group">
+                    <div class="input-group-prepend"><span class="input-group-text bg-white border-right-0"><i class="fas fa-search"></i></span></div>
+                    <input type="text" id="filtro-modal" class="form-control border-left-0" placeholder="Escriba para buscar...">
+                </div>
+            </div>
+            <div class="modal-body p-0" id="modal-body-items" style="max-height: 450px; overflow-y: auto;"></div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalClientes" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content" style="border-radius: 20px; overflow: hidden;">
+            <div class="modal-header border-0 bg-light p-4">
+                <div>
+                    <h5 class="modal-title font-weight-bold mb-1">Directorio de Clientes</h5>
+                    <p class="text-muted small mb-0">Seleccione un cliente para la venta</p>
+                </div>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="px-4 py-3 border-bottom">
+                <div class="row align-items-center">
+                    <div class="col-md-8 mb-2 mb-md-0">
+                        <div class="input-group bg-light border-0" style="border-radius: 12px; overflow: hidden;">
+                            <div class="input-group-prepend"><span class="input-group-text bg-transparent border-0"><i class="fas fa-search text-muted"></i></span></div>
+                            <input type="text" id="filtro-cliente" class="form-control bg-transparent border-0 py-4" placeholder="Buscar cliente...">
+                        </div>
+                    </div>
+                    <div class="col-md-4 text-right">
+                        <button class="btn btn-primary btn-block py-2" onclick="registrarNuevoCliente()" style="border-radius: 12px; font-weight: 600;">
+                            <i class="fas fa-plus-circle mr-2"></i> NUEVO
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-body p-0" id="modal-body-clientes" style="max-height: 400px; min-height: 300px; overflow-y: auto; background: #fcfcfc;"></div>
+            <div class="modal-footer border-0 p-3">
+                <button class="btn btn-outline-secondary btn-block py-2" onclick="seleccionarCliente(null, 'CLIENTE GENERAL')" style="border-radius: 12px; font-weight: 600;">
+                    <i class="fas fa-user-slash mr-2"></i> RESTABLECER GENERAL
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalMetodoPago" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius: 25px;">
+            <div class="modal-body p-4 p-md-5 text-center">
+                <h4 class="font-weight-bold mb-4">Total a pagar: <span id="modal-total-display" class="text-primary"></span></h4>
+                <div class="row">
+                    <div class="col-4 px-1"><button type="button" class="payment-btn shadow-sm" onclick="seleccionarEfectivo()"><i class="fas fa-money-bill-wave"></i>Efectivo</button></div>
+                    <div class="col-4 px-1"><button type="button" class="payment-btn shadow-sm" onclick="procesarVentaConMetodo(2)"><i class="fas fa-credit-card"></i>Tarjeta</button></div>
+                    <div class="col-4 px-1"><button type="button" class="payment-btn shadow-sm" onclick="procesarVentaConMetodo(3)"><i class="fas fa-mobile-alt"></i>Transf.</button></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalTicket" tabindex="-1" data-backdrop="static">
+    <div class="modal-dialog">
+        <div class="modal-content" style="border-radius: 20px;">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title font-weight-bold">Ticket de Venta</h5>
+                <button type="button" class="close" onclick="cerrarVentaTotal()">&times;</button>
+            </div>
+            <div class="modal-body p-3">
+                <iframe id="ticket-iframe"></iframe>
+            </div>
+            <div class="modal-footer border-0 d-flex flex-column flex-md-row justify-content-between pt-0">
+                <button type="button" class="btn btn-outline-primary px-4 mb-2 mb-md-0 w-100 w-md-auto" onclick="reimprimirTicket()" style="border-radius: 10px;">
+                    <i class="fas fa-print mr-2"></i> IMPRIMIR
+                </button>
+                <button type="button" class="btn btn-primary px-4 w-100 w-md-auto" onclick="cerrarVentaTotal()" style="border-radius: 10px;">NUEVA VENTA (F12)</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    let carrito = [];
+    let datosVentaTemp = {}; 
+    let clienteSeleccionado = { id: null, nombre: "CLIENTE GENERAL" };
+    let antibioticosEnCarrito = []; // Array para trackear antibióticos
+
+    // 1. ATAJOS DE TECLADO
+    $(document).keydown(function(e) {
+        if (e.key === "F1") { e.preventDefault(); abrirSeleccion('productos'); }
+        if (e.key === "F2") { e.preventDefault(); abrirSeleccion('procedimientos'); }
+        if (e.key === "F3") { e.preventDefault(); abrirSeleccion('consultas'); }
+        if (e.key === "F4") { e.preventDefault(); abrirSeleccionClientes(); }
+        if (e.key === "F12") { e.preventDefault(); if($('#modalTicket').is(':visible')){ cerrarVentaTotal(); } else { finalizarVenta(); } }
+    });
+
+    // 2. BUSCADOR / LECTOR - MODIFICADO PARA OBTENER INFO DE ANTIBIÓTICOS
+    $('#barcode-input').on('keypress', function(e) {
+        if (e.which === 13) { 
+            e.preventDefault();
+            let query = $(this).val().trim();
+            if (query === "") return;
+
+            $.get('/api/buscar_producto', { query: query }, function(res) {
+                if (res.success) {
+                    if (res.tipo === 'exacto') {
+                        // Pasamos el stock real desde la API y si es antibiótico
+                        agregarItem(res.data.nombre, res.data.precio, res.data.id, res.data.stock_actual, true, res.data.antibiotico);
+                        $('#barcode-input').val('');
+                    } else if (res.tipo === 'lista') {
+                        $('#modalSeleccion').modal('show');
+                        renderItemsModal(res.data, true);
+                        $('#barcode-input').val('');
+                    }
+                } else {
+                    Swal.fire({ icon: 'error', title: 'No encontrado', timer: 1500, showConfirmButton: false });
+                    $('#barcode-input').val('').focus();
+                }
+            });
+        }
+    });
+
+    // 3. REGISTRO DE CLIENTE (COMPLETO: EMAIL Y DIRECCIÓN)
+    async function registrarNuevoCliente() {
+        $('#modalClientes').modal('hide');
+        const { value: formValues } = await Swal.fire({
+            title: '<i class="fas fa-user-plus text-primary"></i> Nuevo Cliente',
+            html: `
+                <div class="container-fluid text-left mt-3">
+                    <div class="row">
+                        <div class="col-12 mb-3">
+                            <label class="small font-weight-bold text-muted">NOMBRE COMPLETO *</label>
+                            <input id="sw-nombre" class="form-control" placeholder="Ej. Juan Pérez">
+                        </div>
+                        <div class="col-6 mb-3">
+                            <label class="small font-weight-bold text-muted">RFC / NIT</label>
+                            <input id="sw-rfc" class="form-control" placeholder="Opcional">
+                        </div>
+                        <div class="col-6 mb-3">
+                            <label class="small font-weight-bold text-muted">TELÉFONO</label>
+                            <input id="sw-tel" class="form-control" placeholder="10 dígitos">
+                        </div>
+                        <div class="col-12 mb-3">
+                            <label class="small font-weight-bold text-muted">CORREO ELECTRÓNICO</label>
+                            <input id="sw-email" type="email" class="form-control" placeholder="usuario@correo.com">
+                        </div>
+                        <div class="col-12">
+                            <label class="small font-weight-bold text-muted">DIRECCIÓN COMPLETA</label>
+                            <textarea id="sw-dir" class="form-control" rows="2" placeholder="Calle, número, colonia..."></textarea>
+                        </div>
+                    </div>
+                </div>`,
+            showCancelButton: true,
+            confirmButtonText: 'Guardar Cliente',
+            confirmButtonColor: '#1e5ba0',
+            preConfirm: () => {
+                const nombre = document.getElementById('sw-nombre').value.trim();
+                if (!nombre) { Swal.showValidationMessage('El nombre es obligatorio'); return false; }
+                return {
+                    nombre: nombre,
+                    rfc_nit: document.getElementById('sw-rfc').value,
+                    telefono: document.getElementById('sw-tel').value,
+                    email: document.getElementById('sw-email').value,
+                    direccion: document.getElementById('sw-dir').value
+                };
+            }
+        });
+
+        if (formValues) {
+            Swal.fire({ title: 'Guardando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+            $.ajax({
+                url: '/api/clientes/nuevo',
+                method: 'POST',
+                data: formValues,
+                success: function(res) {
+                    if(res.success) {
+                        Swal.fire({ icon: 'success', title: '¡Guardado!', timer: 1000, showConfirmButton: false })
+                        .then(() => { seleccionarCliente(res.id, res.nombre); });
+                    } else {
+                        Swal.fire('Error', res.message, 'error').then(() => $('#modalClientes').modal('show'));
+                    }
+                },
+                error: () => { Swal.fire('Error', 'Error de conexión', 'error').then(() => $('#modalClientes').modal('show')); }
+            });
+        } else { $('#modalClientes').modal('show'); }
+    }
+
+    function seleccionarCliente(id, nombre) {
+        clienteSeleccionado = { id: id, nombre: nombre };
+        $('#client-name-display').text(nombre);
+        $('#modalClientes').modal('hide');
+    }
+
+    // 4. CARRITO CON DETECCIÓN DE ANTIBIÓTICOS - MODIFICADO
+    function agregarItem(nombre, precio, id, stockMax = 999, esProducto = true, esAntibiotico = false) {
+        // Convertir a número por seguridad
+        let max = parseFloat(stockMax);
+        
+        // Alerta si no hay nada de stock al intentar agregar
+        if (esProducto && max <= 0) {
+            Swal.fire({ icon: 'warning', title: 'Sin existencias', text: `El producto "${nombre}" no tiene stock disponible.`, confirmButtonColor: '#e74c3c' });
+            return;
+        }
+
+        let it = carrito.find(i => i.id === id && i.nombre === nombre);
+        if (it) {
+            if (esProducto && (it.cant + 1) > max) {
+                Swal.fire({ icon: 'error', title: 'Stock Insuficiente', text: `Solo quedan ${max} unidades de "${nombre}"`, timer: 2000, showConfirmButton: false });
+                return;
+            }
+            it.cant++;
+        } else {
+            carrito.push({ 
+                id, 
+                nombre, 
+                precio: parseFloat(precio), 
+                cant: 1, 
+                stockMax: max, 
+                esProducto,
+                esAntibiotico: esAntibiotico || false
+            });
+        }
+        
+        renderizar();
+        $('#modalSeleccion').modal('hide');
+        $('#barcode-input').focus();
+    }
+
+    function ajustarCantidad(idx, val) { 
+        let it = carrito[idx];
+        if (val > 0 && it.esProducto && (it.cant + val) > it.stockMax) {
+            Swal.fire({ icon: 'error', title: 'Límite alcanzado', text: `No puedes agregar más de ${it.stockMax} unidades.`, timer: 1500, showConfirmButton: false });
+            return;
+        }
+        if (it.cant + val >= 1) { it.cant += val; renderizar(); } else eliminar(idx); 
+    }
+
+    function renderizar() {
+        let tHtml = ''; 
+        let ticket = ''; 
+        let total = 0;
+        let hayAntibioticos = false;
+        antibioticosEnCarrito = [];
+        
+        if (carrito.length === 0) {
+            $('#carrito-table').html('<tr><td colspan="5" class="text-center py-5 text-muted">No hay productos</td></tr>');
+            $('#ticket-items').html('<p class="text-center text-muted mt-5">Carrito vacío</p>');
+            $('#total-ticket').text('$0.00');
+            ocultarAlertaAntibiotico();
+            return;
+        }
+        
+        carrito.forEach((it, idx) => {
+            let sub = it.precio * it.cant;
+            total += sub;
+            
+            // Verificar si es antibiótico
+            if (it.esAntibiotico) {
+                hayAntibioticos = true;
+                antibioticosEnCarrito.push(it);
+            }
+            
+            // Construir HTML para la tabla
+            tHtml += `<tr>
+                <td class="pl-4 py-3">
+                    <div class="d-flex align-items-center">
+                        <b>${it.nombre}</b>
+                        ${it.esAntibiotico ? '<span class="antibiotico-indicator"><i class="fas fa-pills mr-1"></i> ANTIBIÓTICO</span>' : ''}
+                    </div>
+                </td>
+                <td class="text-center">
+                    <div class="d-flex justify-content-center align-items-center">
+                        <button class="btn btn-sm btn-outline-primary" onclick="ajustarCantidad(${idx}, -1)">-</button>
+                        <input type="number" class="qty-input mx-1" value="${it.cant}" readonly>
+                        <button class="btn btn-sm btn-outline-primary" onclick="ajustarCantidad(${idx}, 1)">+</button>
+                    </div>
+                </td>
+                <td>$${it.precio.toFixed(2)}</td>
+                <td class="font-weight-bold text-primary">$${sub.toFixed(2)}</td>
+                <td class="text-right pr-4"><button class="btn btn-sm text-danger" onclick="eliminar(${idx})"><i class="fas fa-trash-alt"></i></button></td>
+            </tr>`;
+            
+            // Construir HTML para el ticket
+            ticket += `<div class="d-flex justify-content-between mb-1" style="font-size: 0.8rem;">
+                <span>${it.cant} x ${it.nombre} ${it.esAntibiotico ? '<span class="antibiotico-badge">ANTIB</span>' : ''}</span>
+                <span>$${sub.toFixed(2)}</span>
+            </div>`;
+        });
+        
+        $('#carrito-table').html(tHtml);
+        $('#ticket-items').html(ticket);
+        $('#total-ticket').text('$' + total.toFixed(2));
+        
+        // Mostrar u ocultar alerta de antibióticos
+        if (hayAntibioticos) {
+            mostrarAlertaAntibiotico();
+        } else {
+            ocultarAlertaAntibiotico();
+        }
+    }
+
+    function eliminar(idx) { 
+        carrito.splice(idx, 1); 
+        renderizar(); 
+    }
+
+    // Funciones para manejar la alerta de antibióticos
+    function mostrarAlertaAntibiotico() {
+        const alerta = document.getElementById('antibioticoAlert');
+        alerta.classList.remove('hidden');
+        
+        // Auto-ocultar después de 10 segundos (opcional)
+        setTimeout(() => {
+            if (!alerta.classList.contains('hidden')) {
+                alerta.classList.add('hidden');
+            }
+        }, 10000);
+    }
+
+    function ocultarAlertaAntibiotico() {
+        const alerta = document.getElementById('antibioticoAlert');
+        alerta.classList.add('hidden');
+    }
+
+    function cerrarAlertaAntibiotico() {
+        ocultarAlertaAntibiotico();
+    }
+
+    // 5. COBRO Y TICKET - CON ALERTA ADICIONAL PARA ANTIBIÓTICOS
+    function finalizarVenta() {
+        if (carrito.length === 0) return;
+        
+        const totalVal = parseFloat($('#total-ticket').text().replace('$', ''));
+        datosVentaTemp = { total: totalVal };
+        $('#modal-total-display').text('$' + totalVal.toFixed(2));
+        
+        // Si hay antibióticos, mostrar confirmación especial
+        if (antibioticosEnCarrito.length > 0) {
+            mostrarConfirmacionAntibiotico();
+        } else {
+            $('#modalMetodoPago').modal('show');
+        }
+    }
+
+    function mostrarConfirmacionAntibiotico() {
+        const cantidadAntibioticos = antibioticosEnCarrito.length;
+        const nombresAntibioticos = antibioticosEnCarrito.map(a => a.nombre).join(', ');
+        
+        Swal.fire({
+            title: '¡ATENCIÓN! Venta con Antibióticos',
+            html: `
+                <div class="text-left">
+                    <p class="mb-3"><i class="fas fa-exclamation-triangle text-warning mr-2"></i> Esta venta contiene <strong>${cantidadAntibioticos}</strong> antibiótico(s):</p>
+                    <ul class="mb-3">
+                        ${antibioticosEnCarrito.map(a => `<li><strong>${a.nombre}</strong> (${a.cant} unidad${a.cant > 1 ? 'es' : ''})</li>`).join('')}
+                    </ul>
+                    <div class="alert alert-warning" style="font-size: 0.9rem;">
+                        <i class="fas fa-stethoscope mr-2"></i>
+                        <strong>Verifique que el cliente tiene:</strong><br>
+                        1. Receta médica válida y vigente<br>
+                        2. La receta coincide con el producto vendido<br>
+                        3. Datos del paciente en la receta
+                    </div>
+                </div>
+            `,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'SÍ, VERIFIQUE LA RECETA',
+            cancelButtonText: 'CANCELAR VENTA',
+            confirmButtonColor: '#1e5ba0',
+            cancelButtonColor: '#e74c3c',
+            reverseButtons: true
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $('#modalMetodoPago').modal('show');
+            }
+        });
+    }
+
+    async function seleccionarEfectivo() {
+        $('#modalMetodoPago').modal('hide'); 
+        const { value: pago } = await Swal.fire({
+            title: 'Cobro en Efectivo',
+            html: `
+                <div class="py-2 text-center">
+                    <h5 class="text-muted mb-1">TOTAL A PAGAR</h5>
+                    <h1 class="display-4 font-weight-bold text-primary mb-4">$${datosVentaTemp.total.toFixed(2)}</h1>
+                    <div class="form-group text-left">
+                        <label class="small font-weight-bold text-muted">CANTIDAD RECIBIDA</label>
+                        <input type="number" id="swal-input-pago" class="form-control form-control-lg text-center" style="font-size:2rem; height:auto;" step="any" autofocus>
+                    </div>
+                </div>`,
+            showCancelButton: true,
+            confirmButtonText: 'PROCESAR PAGO',
+            preConfirm: () => {
+                const val = parseFloat(document.getElementById('swal-input-pago').value);
+                if (isNaN(val) || val < datosVentaTemp.total) { 
+                    Swal.showValidationMessage(`Faltan $${(datosVentaTemp.total - (val || 0)).toFixed(2)}`); return false; 
+                }
+                return val;
+            }
+        });
+        if (pago) {
+            datosVentaTemp.pago = pago;
+            datosVentaTemp.cambio = pago - datosVentaTemp.total;
+            ejecutarVentaFinal(1); 
+        } else $('#modalMetodoPago').modal('show');
+    }
+
+    function procesarVentaConMetodo(metodo_id) {
+        datosVentaTemp.pago = datosVentaTemp.total;
+        datosVentaTemp.cambio = 0;
+        
+        Swal.fire({
+            title: '¿Confirmar pago?',
+            text: `Se registrará la venta por $${datosVentaTemp.total.toFixed(2)}`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, procesar',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                ejecutarVentaFinal(metodo_id);
+            }
+        });
+    }
+
+    function ejecutarVentaFinal(metodo_id) {
+        Swal.fire({ title: 'Procesando...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+        
+        // Enviar información de antibióticos en la venta
+        const antibioticosInfo = antibioticosEnCarrito.map(a => ({
+            id: a.id,
+            nombre: a.nombre,
+            cantidad: a.cant
+        }));
+        
+        $.ajax({
+            url: '/api/procesar_venta',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ 
+                carrito: carrito, 
+                total: datosVentaTemp.total, 
+                metodo_pago_id: metodo_id,
+                pago: datosVentaTemp.pago,
+                cambio: datosVentaTemp.cambio,
+                cliente_id: clienteSeleccionado.id,
+                contiene_antibioticos: antibioticosEnCarrito.length > 0,
+                antibioticos: antibioticosInfo
+            }),
+            success: function(res) {
+                if (res.success) {
+                    Swal.close();
+                    $('#modalMetodoPago').modal('hide');
+                    
+                    const ticketUrl = `/ticket/reimprimir/${res.venta_id}`;
+                    $('#ticket-iframe').attr('src', ticketUrl);
+                    $('#modalTicket').modal('show');
+                    
+                    document.getElementById('ticket-iframe').onload = function() { 
+                        reimprimirTicket(); 
+                    };
+                    
+                    // Mostrar confirmación final si había antibióticos
+                    if (antibioticosEnCarrito.length > 0) {
+                        setTimeout(() => {
+                            Swal.fire({
+                                title: '¡Venta con Antibióticos Registrada!',
+                                html: `
+                                    <div class="text-center">
+                                        <i class="fas fa-check-circle text-success fa-3x mb-3"></i>
+                                        <p class="mb-2">Se registró la venta de <strong>${antibioticosEnCarrito.length}</strong> antibiótico(s)</p>
+                                        <small class="text-muted">No olvide archivar la receta médica</small>
+                                    </div>
+                                `,
+                                icon: 'success',
+                                timer: 3000,
+                                showConfirmButton: false
+                            });
+                        }, 1000);
+                    }
+                } else {
+                    Swal.fire('Error', res.message, 'error');
+                }
+            },
+            error: function() {
+                Swal.fire('Error', 'No se pudo conectar con el servidor', 'error');
+            }
+        });
+    }
+
+    function reimprimirTicket() {
+        const frame = document.getElementById('ticket-iframe');
+        if (frame && frame.contentWindow) { frame.contentWindow.focus(); frame.contentWindow.print(); }
+    }
+
+    function cerrarVentaTotal() {
+        $('#modalTicket').modal('hide');
+        carrito = []; 
+        clienteSeleccionado = { id: null, nombre: "CLIENTE GENERAL" }; 
+        antibioticosEnCarrito = [];
+        $('#client-name-display').text("CLIENTE GENERAL");
+        renderizar(); 
+        $('#barcode-input').val('').focus();
+    }
+
+    // 7. CARGA DE PRODUCTOS / CLIENTES - MODIFICADO PARA MOSTRAR ANTIBIÓTICOS
+    function abrirSeleccion(tipo) {
+        $('#modalSeleccion').modal('show');
+        $('#modal-body-items').html('<div class="p-5 text-center"><i class="fas fa-spinner fa-spin fa-2x text-primary"></i></div>');
+        $.get('/api/items/' + tipo, function(data) { 
+            if (tipo === 'productos') {
+                renderItemsModalConAntibioticos(data); 
+            } else {
+                renderItemsModal(data, false);
+            }
+        });
+    }
+
+    function renderItemsModalConAntibioticos(data) {
+        let html = '';
+        data.forEach(item => {
+            let stock = item.stock_actual || 0;
+            let esAntibiotico = item.antibiotico || false;
+            
+            html += `<button class="item-row" onclick="agregarItem('${item.nombre}', ${item.precio}, ${item.id}, ${stock}, true, ${esAntibiotico})">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="text-left">
+                        <div class="d-flex align-items-center">
+                            <b>${item.nombre}</b>
+                            ${esAntibiotico ? '<span class="antibiotico-indicator ml-2"><i class="fas fa-pills mr-1"></i> ANTIB</span>' : ''}
+                        </div>
+                        <small class="text-muted">Stock: ${stock}</small>
+                    </div>
+                    <span class="badge badge-primary px-3 py-2">$${parseFloat(item.precio).toFixed(2)}</span>
+                </div>
+            </button>`;
+        });
+        $('#modal-body-items').html(html || '<p class="p-4 text-center">Sin resultados</p>');
+    }
+
+    function renderItemsModal(data, esProd) {
+        let html = '';
+        data.forEach(item => {
+            let stock = esProd ? (item.stock_actual || 0) : 999;
+            html += `<button class="item-row" onclick="agregarItem('${item.nombre}', ${item.precio}, ${item.id}, ${stock}, ${esProd})">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="text-left"><b>${item.nombre}</b>${esProd ? `<br><small class="text-muted">Stock: ${stock}</small>` : ''}</div>
+                    <span class="badge badge-primary px-3 py-2">$${parseFloat(item.precio).toFixed(2)}</span>
+                </div>
+            </button>`;
+        });
+        $('#modal-body-items').html(html || '<p class="p-4 text-center">Sin resultados</p>');
+    }
+
+    function abrirSeleccionClientes() { $('#modalClientes').modal('show'); cargarClientes(); }
+    
+    function cargarClientes(filtro = '') {
+        $.get('/api/clientes', { q: filtro }, function(data) {
+            let html = '';
+            data.forEach(c => {
+                html += `<button class="item-row d-flex align-items-center" onclick="seleccionarCliente(${c.id}, '${c.nombre}')">
+                    <div class="user-avatar mr-2" style="width:30px; height:30px; font-size:12px;">${c.nombre[0]}</div>
+                    <div class="flex-grow-1 text-left"><b>${c.nombre}</b></div>
+                </button>`;
+            });
+            $('#modal-body-clientes').html(html || '<p class="p-3 text-center">No hay clientes</p>');
+        });
+    }
+</script>
+</body>
+</html>

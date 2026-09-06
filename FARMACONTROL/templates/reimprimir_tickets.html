@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Reimprimir Ticket #{{ venta.folio }} | FarmaControl</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root { 
+            --primary-blue: #1e5ba0; 
+            --deep-blue: #0d3b66;
+            --success-green: #27ae60;
+            --bg-gray: #f8f9fa; 
+        }
+        
+        body { background-color: var(--bg-gray); font-family: 'Inter', sans-serif; }
+        
+        /* Sidebar */
+        .sidebar { 
+            width: 80px; height: 100vh; background: #fff; position: fixed; 
+            left: 0; top: 0; border-right: 1px solid #e1e4e8; 
+            display: flex; flex-direction: column; align-items: center; 
+            padding: 25px 0; z-index: 1100; 
+        }
+        .logo-img { width: 42px; margin-bottom: 30px; }
+        .sidebar-link { color: #adb5bd; font-size: 1.4rem; margin-bottom: 25px; transition: 0.3s; }
+        .sidebar-link:hover, .sidebar-link.active { color: var(--primary-blue); }
+        .logout-btn { margin-top: auto; color: #ff4757; font-size: 1.5rem; }
+        
+        /* Main Content */
+        .main-content { margin-left: 80px; padding: 40px 60px; min-height: 100vh; }
+        
+        /* Header */
+        .header-title { 
+            color: var(--deep-blue); font-weight: 900; 
+            font-size: 2rem; letter-spacing: -1px; 
+        }
+        
+        /* Container para el ticket */
+        .ticket-container {
+            max-width: 800px;
+            margin: 30px auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            padding: 30px;
+            border: 1px solid #e1e4e8;
+        }
+        
+        /* Estilos del ticket */
+        .ticket-content {
+            font-family: 'Courier New', monospace;
+            width: 75mm;
+            margin: 0 auto;
+            padding: 4mm;
+            background: white;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            position: relative;
+        }
+        
+        .reimpresion-label {
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #f39c12;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 900;
+            z-index: 10;
+            box-shadow: 0 3px 10px rgba(243, 156, 18, 0.3);
+        }
+        
+        .ticket-header {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        
+        .store-name {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .ticket-meta {
+            font-size: 10px;
+            color: #666;
+            line-height: 1.3;
+        }
+        
+        .ticket-divider {
+            border-top: 1px dashed #333;
+            margin: 10px 0;
+        }
+        
+        .ticket-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+        }
+        
+        .ticket-table th {
+            text-align: left;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .ticket-table td {
+            padding: 3px 0;
+        }
+        
+        .ticket-total {
+            text-align: right;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+        
+        .ticket-footer {
+            text-align: center;
+            margin-top: 15px;
+            font-size: 10px;
+            color: #666;
+        }
+        
+        /* Botones de acción */
+        .action-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e9ecef;
+        }
+        
+        .btn-print {
+            background: var(--primary-blue);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        
+        .btn-print:hover {
+            background: var(--deep-blue);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(30, 91, 160, 0.2);
+        }
+        
+        .btn-back {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+            transition: all 0.3s;
+        }
+        
+        .btn-back:hover {
+            background: #495057;
+            color: white;
+            text-decoration: none;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(108, 117, 125, 0.2);
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .main-content {
+                margin-left: 0;
+                padding: 20px;
+            }
+            
+            .sidebar {
+                width: 100%;
+                height: 60px;
+                flex-direction: row;
+                justify-content: space-around;
+                padding: 0 20px;
+                top: auto;
+                bottom: 0;
+                border-right: none;
+                border-top: 1px solid #e1e4e8;
+            }
+            
+            .logo-img, .logout-btn {
+                display: none;
+            }
+            
+            .sidebar-link {
+                margin-bottom: 0;
+            }
+            
+            .ticket-content {
+                transform: scale(0.9);
+            }
+        }
+        
+        /* Estilos para impresión */
+        @media print {
+            /* Ocultar todo excepto el ticket */
+            body * {
+                visibility: hidden;
+            }
+            
+            .ticket-content, .ticket-content * {
+                visibility: visible;
+            }
+            
+            .ticket-content {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 75mm !important;
+                margin: 0 !important;
+                padding: 4mm !important;
+                border: none !important;
+                box-shadow: none !important;
+                font-family: 'Courier New', monospace !important;
+                font-size: 11px !important;
+            }
+            
+            .reimpresion-label {
+                position: relative;
+                top: 0;
+                left: 0;
+                transform: none;
+                margin-bottom: 10px;
+                text-align: center;
+            }
+            
+            .action-buttons, .sidebar, .main-content {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo" class="logo-img">
+        <a href="{{ url_for('index') }}" class="sidebar-link" title="Inicio"><i class="fas fa-th-large"></i></a>
+        <a href="{{ url_for('punto_venta') }}" class="sidebar-link" title="Punto de Venta"><i class="fas fa-cash-register"></i></a>
+        <a href="{{ url_for('listar_productos') }}" class="sidebar-link" title="Inventario"><i class="fas fa-boxes-stacked"></i></a>
+        
+        {% if current_user.rol == 1 %}
+        <a href="{{ url_for('modulo_reportes_dashboard') }}" class="sidebar-link" title="Reportes"><i class="fas fa-file-waveform"></i></a>
+        <a href="{{ url_for('gestion_servicios') }}" class="sidebar-link" title="Servicios Médicos"><i class="fas fa-stethoscope"></i></a>
+        <a href="{{ url_for('listar_usuarios') }}" class="sidebar-link" title="Usuarios"><i class="fas fa-users-cog"></i></a>
+        {% endif %}
+        
+        <a href="{{ url_for('Salir') }}" class="logout-btn" title="Cerrar Sesión"><i class="fas fa-sign-out-alt"></i></a>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Header -->
+        <header class="mb-4">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <h1 class="header-title">Reimprimir Ticket</h1>
+                    <p class="text-muted font-weight-bold">Folio: {{ venta.folio }} | {{ venta.fecha.strftime('%d/%m/%Y %H:%M') }}</p>
+                </div>
+                <div class="d-flex flex-column align-items-end">
+                    <div class="badge badge-warning px-3 py-2 mb-2">
+                        <i class="fas fa-redo mr-2"></i>REIMPRESIÓN
+                    </div>
+                    <div class="text-muted small">
+                        <i class="fas fa-user mr-1"></i> {{ current_user.nombre }}
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Ticket Container -->
+        <div class="ticket-container">
+            <div class="ticket-content">
+                <div class="reimpresion-label">
+                    <i class="fas fa-redo mr-1"></i> REIMPRESIÓN
+                </div>
+                
+                <!-- Ticket Header -->
+                <div class="ticket-header">
+                    <div class="store-name">FARMACIA CONTROL</div>
+                    <div class="ticket-meta">
+                        Op: {{ venta.id }} | CAJA: ESTACION01 | Ticket: {{ venta.folio }}<br>
+                        Fecha: {{ venta.fecha.strftime('%d-%m-%Y') }} | Hora: {{ venta.fecha.strftime('%H:%M:%S') }}<br>
+                        Atendido por: {{ venta.farmaceutico }}
+                    </div>
+                </div>
+                
+                <div class="ticket-divider"></div>
+                
+                <!-- Products Table -->
+                <table class="ticket-table">
+                    <thead>
+                        <tr>
+                            <th align="left">DESC.</th>
+                            <th align="center">CANT</th>
+                            <th align="right">P.U</th>
+                            <th align="right">TOTAL</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for d in detalles %}
+                        <tr>
+                            <td colspan="4" style="padding-top: 3px;">
+                                {{ d.producto_nombre }}
+                                {% if d.antibiotico == 1 %}
+                                <span style="font-size: 8px; color: #e74c3c; font-weight: bold;"> [ANTIB]</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td></td>
+                            <td align="center">{{ d.cantidad }}</td>
+                            <td align="right">${{ "{:,.2f}".format(d.precio_unitario) }}</td>
+                            <td align="right">${{ "{:,.2f}".format(d.subtotal) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                
+                <div class="ticket-divider"></div>
+                
+                <!-- Totals -->
+                <div class="ticket-total">
+                    <div style="font-size: 12px;">TOTAL VENTA: ${{ "{:,.2f}".format(venta.total) }}</div>
+                    <div style="margin-top: 5px; font-size: 11px;">
+                        RECIBIDO: ${{ "{:,.2f}".format(venta.pago_recibido) if venta.pago_recibido else "0.00" }}<br>
+                        <strong>SU CAMBIO: ${{ "{:,.2f}".format(venta.cambio_entregado) if venta.cambio_entregado else "0.00" }}</strong>
+                    </div>
+                </div>
+                
+                <div class="ticket-divider"></div>
+                
+                <!-- Footer -->
+                <div class="ticket-footer">
+                    <div style="margin-bottom: 5px;">
+                        Método de pago: {{ venta.metodo }}<br>
+                        {% if venta.cliente and venta.cliente != 'Público General' %}
+                        Cliente: {{ venta.cliente }}<br>
+                        {% if venta.rfc_nit %}
+                        RFC/NIT: {{ venta.rfc_nit }}<br>
+                        {% endif %}
+                        {% endif %}
+                        ID Venta: #{{ venta.id }}
+                    </div>
+                    
+                    <div style="font-weight: bold; margin: 10px 0;">
+                        ¡GRACIAS POR SU COMPRA!<br>
+                        <span style="font-size: 9px; font-weight: normal;">
+                            Conserve su ticket para cualquier aclaración.
+                        </span>
+                    </div>
+                    
+                    <div style="font-size: 9px; color: #999; margin-top: 5px;">
+                        Tel: (55) 1234-5678 | contacto@medicalife.com
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Action Buttons -->
+            <div class="action-buttons">
+                <button class="btn-print" onclick="imprimirTicket()">
+                    <i class="fas fa-print"></i> IMPRIMIR TICKET
+                </button>
+                <a href="{{ url_for('reporte_ventas_detalladas') }}" class="btn-back">
+                    <i class="fas fa-arrow-left"></i> VOLVER AL LISTADO
+                </a>
+            </div>
+        </div>
+    </main>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script>
+        // Función para imprimir el ticket
+        function imprimirTicket() {
+            window.print();
+        }
+        
+        // Atajo de teclado para imprimir (Ctrl+P)
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 'p') {
+                e.preventDefault();
+                imprimirTicket();
+            }
+        });
+        
+        // Formatear números al cargar la página
+        document.addEventListener('DOMContentLoaded', function() {
+            // Formatear todos los valores monetarios
+            document.querySelectorAll('.ticket-content td, .ticket-content .ticket-total div').forEach(function(el) {
+                let text = el.textContent;
+                if (text.includes('$')) {
+                    let num = parseFloat(text.replace('$', '').replace(/,/g, ''));
+                    if (!isNaN(num)) {
+                        el.textContent = text.replace(/\$[\d,]+\.?\d*/g, '$' + num.toLocaleString('es-MX', {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2
+                        }));
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>

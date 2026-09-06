@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reporte Antibióticos | FarmaControl</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        :root { 
+            --primary-blue: #1e5ba0; 
+            --deep-blue: #0d3b66;
+            --success-green: #2ecc71;
+            --warning-orange: #f39c12;
+            --info-cyan: #00bcd4;
+            --danger-red: #e74c3c;
+            --bg-gray: #f0f2f5; 
+        }
+        
+        body { background-color: var(--bg-gray); font-family: 'Inter', sans-serif; margin: 0; min-height: 100vh; }
+
+        /* Sidebar */
+        .sidebar { 
+            width: 80px; height: 100vh; background: #fff; position: fixed; 
+            left: 0; top: 0; border-right: 1px solid #e1e4e8; 
+            display: flex; flex-direction: column; align-items: center; 
+            padding: 25px 0; z-index: 1100; transition: 0.3s;
+        }
+        .logo-img { width: 42px; margin-bottom: 30px; }
+        .sidebar-link { color: #adb5bd; font-size: 1.4rem; margin-bottom: 25px; transition: 0.3s; }
+        .sidebar-link:hover { color: var(--primary-blue); }
+        .sidebar-link.active-link { color: var(--primary-blue); }
+        .logout-btn { margin-top: auto; color: #ff4757; font-size: 1.5rem; transition: 0.3s; }
+
+        /* Contenido Principal */
+        .main-content { margin-left: 80px; padding: 40px 60px; transition: 0.3s; }
+
+        /* Perfil de Usuario */
+        .user-profile-badge {
+            background: white; padding: 6px 6px 6px 18px; border-radius: 40px;
+            display: flex; align-items: center; box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+        .user-name { font-weight: 800; color: var(--deep-blue); font-size: 0.95rem; margin-right: 15px; }
+        .user-avatar { 
+            width: 40px; height: 40px; background: linear-gradient(135deg, var(--primary-blue), #4facfe);
+            color: white; border-radius: 50%; display: flex; align-items: center; 
+            justify-content: center; font-weight: 900;
+        }
+
+        .header-title { color: var(--deep-blue); font-weight: 900; font-size: 2.6rem; letter-spacing: -1.5px; }
+        .header-subtitle { color: #718096; font-weight: 600; font-size: 1.1rem; }
+
+        /* Card de Filtros */
+        .filter-card {
+            background: white; border-radius: 20px; padding: 25px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.04); margin-bottom: 30px;
+            border: 1px solid rgba(0,0,0,0.03);
+        }
+
+        /* Estadísticas */
+        .stats-card {
+            background: white; border-radius: 18px; padding: 20px; margin-bottom: 20px;
+            border-top: 5px solid var(--info-cyan); box-shadow: 0 5px 15px rgba(0,0,0,0.04);
+        }
+        .stats-number { font-size: 2.5rem; font-weight: 900; color: var(--deep-blue); line-height: 1; }
+        .stats-label { font-size: 0.9rem; color: #718096; font-weight: 600; }
+
+        /* Tabla */
+        .table-custom {
+            background: white; border-radius: 20px; overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.04);
+        }
+        .table-custom thead th {
+            background-color: #f8f9fa; border-bottom: 2px solid #e9ecef;
+            color: var(--deep-blue); font-weight: 800; font-size: 0.9rem;
+            text-transform: uppercase; padding: 15px 20px;
+        }
+        .table-custom tbody tr { transition: 0.2s; }
+        .table-custom tbody tr:hover { background-color: #f8f9ff; }
+        .table-custom tbody td { padding: 15px 20px; vertical-align: middle; border-top: 1px solid #f1f3f7; }
+
+        /* Media Queries */
+        @media (max-width: 768px) {
+            .sidebar { 
+                width: 100%; height: 60px; top: auto; bottom: 0; 
+                flex-direction: row; padding: 0; border-right: none; 
+                border-top: 1px solid #e1e4e8; justify-content: space-around;
+            }
+            .logo-img { display: none; }
+            .sidebar-link { margin-bottom: 0; font-size: 1.2rem; }
+            .logout-btn { margin-top: 0; font-size: 1.2rem; }
+            .main-content { margin-left: 0; padding: 20px 15px 100px 15px; }
+            .user-name { display: none; }
+            .header-title { font-size: 1.8rem; }
+            .header-subtitle { font-size: 0.9rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <aside class="sidebar">
+        <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo" class="logo-img">
+        <a href="{{ url_for('inicio_farmacia_route') }}" class="sidebar-link" title="Inicio"><i class="fas fa-th-large"></i></a>
+        <a href="{{ url_for('punto_venta') }}" class="sidebar-link" title="Punto de Venta"><i class="fas fa-cash-register"></i></a>
+        <a href="{{ url_for('listar_productos') }}" class="sidebar-link" title="Inventario"><i class="fas fa-boxes-stacked"></i></a>
+        <a href="{{ url_for('modulo_reportes_dashboard') }}" class="sidebar-link active-link" title="Reportes"><i class="fas fa-file-waveform"></i></a>
+        <a href="{{ url_for('Salir') }}" class="logout-btn" title="Cerrar Sesión"><i class="fas fa-sign-out-alt"></i></a>
+    </aside>
+
+    <main class="main-content">
+        <header class="d-flex justify-content-between align-items-center mb-5">
+            <div>
+                <h1 class="header-title">Reporte de Antibióticos</h1>
+                <p class="header-subtitle mb-0">Control y seguimiento de medicamentos controlados</p>
+            </div>
+
+            <div class="user-profile-badge">
+                <span class="user-name text-uppercase">{{ current_user.nombre }}</span>
+                <div class="user-avatar shadow">
+                    {{ current_user.nombre[0] | upper }}
+                </div>
+            </div>
+        </header>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category if category != 'error' else 'danger' }} alert-dismissible fade show mb-4" style="border-radius: 15px;" role="alert">
+                        <i class="fas fa-info-circle mr-2"></i> {{ message }}
+                        <button type="button" class="close" data-dismiss="alert">&times;</button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Filtros -->
+        <div class="filter-card">
+            <form method="GET" action="{{ url_for('reporte_antibioticos_mejorado') }}">
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label font-weight-bold">Fecha Inicio</label>
+                        <input type="date" name="fecha_inicio" class="form-control" style="border-radius: 12px;" 
+                               value="{{ fecha_inicio }}">
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label font-weight-bold">Fecha Fin</label>
+                        <input type="date" name="fecha_fin" class="form-control" style="border-radius: 12px;" 
+                               value="{{ fecha_fin }}">
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label font-weight-bold">Vendedor</label>
+                        <select name="usuario_id" class="form-control" style="border-radius: 12px;">
+                            <option value="">Todos los vendedores</option>
+                            {% for usuario in usuarios %}
+                                <option value="{{ usuario.id }}" {% if usuario.id|string == usuario_id %}selected{% endif %}>
+                                    {{ usuario.nombre }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label font-weight-bold">Antibiótico</label>
+                        <select name="producto_id" class="form-control" style="border-radius: 12px;">
+                            <option value="">Todos los antibióticos</option>
+                            {% for antibiotico in antibioticos %}
+                                <option value="{{ antibiotico.id }}" {% if antibiotico.id|string == producto_id %}selected{% endif %}>
+                                    {{ antibiotico.nombre }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <button type="submit" class="btn btn-primary" style="border-radius: 12px; padding: 10px 25px;">
+                        <i class="fas fa-filter mr-2"></i> Aplicar Filtros
+                    </button>
+                    <a href="{{ url_for('reporte_antibioticos_mejorado') }}" class="btn btn-outline-secondary" style="border-radius: 12px;">
+                        <i class="fas fa-redo mr-2"></i> Limpiar
+                    </a>
+                </div>
+            </form>
+        </div>
+
+        <!-- Estadísticas -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="stats-card">
+                    <div class="stats-number">{{ estadisticas.total_unidades or 0 }}</div>
+                    <div class="stats-label">Unidades Vendidas</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card" style="border-top-color: var(--success-green);">
+                    <div class="stats-number">${{ "%.2f"|format(estadisticas.total_venta or 0) }}</div>
+                    <div class="stats-label">Total Ventas</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card" style="border-top-color: var(--warning-orange);">
+                    <div class="stats-number">${{ "%.2f"|format(estadisticas.total_utilidad or 0) }}</div>
+                    <div class="stats-label">Utilidad Total</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card" style="border-top-color: var(--primary-blue);">
+                    <div class="stats-number">{{ estadisticas.total_ventas or 0 }}</div>
+                    <div class="stats-label">Transacciones</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top Productos -->
+        {% if top_productos %}
+        <div class="card mb-4" style="border-radius: 20px; border: none; box-shadow: 0 5px 20px rgba(0,0,0,0.04);">
+            <div class="card-body">
+                <h5 class="card-title font-weight-bold mb-3">
+                    <i class="fas fa-crown text-warning mr-2"></i> Top 10 Antibióticos Más Vendidos
+                </h5>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Antibiótico</th>
+                                <th class="text-center">Unidades</th>
+                                <th class="text-right">Total Vendido</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for producto in top_productos %}
+                            <tr>
+                                <td>{{ producto.nombre }}</td>
+                                <td class="text-center"><span class="badge badge-primary">{{ producto.cantidad_vendida }}</span></td>
+                                <td class="text-right font-weight-bold">${{ "%.2f"|format(producto.total_venta) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Tabla Principal -->
+        <div class="card" style="border-radius: 20px; border: none; box-shadow: 0 5px 20px rgba(0,0,0,0.04);">
+            <div class="card-body">
+                <h5 class="card-title font-weight-bold mb-3">
+                    <i class="fas fa-list mr-2"></i> Detalle de Ventas de Antibióticos
+                </h5>
+                <div class="table-responsive">
+                    <table class="table table-custom">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Folio</th>
+                                <th>Vendedor</th>
+                                <th>Cliente</th>
+                                <th>Antibiótico</th>
+                                <th class="text-center">Cantidad</th>
+                                <th class="text-right">Precio Unitario</th>
+                                <th class="text-right">Subtotal</th>
+                                <th class="text-right">Utilidad</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if registros %}
+                                {% for registro in registros %}
+                                <tr>
+                                    <td>{{ registro.fecha.strftime('%d/%m/%Y %H:%M') }}</td>
+                                    <td><span class="badge badge-light">{{ registro.folio }}</span></td>
+                                    <td>{{ registro.vendedor }}</td>
+                                    <td>{{ registro.cliente or 'General' }}</td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <i class="fas fa-pills mr-2 text-info"></i>
+                                            {{ registro.producto }}
+                                        </div>
+                                    </td>
+                                    <td class="text-center"><span class="badge badge-primary">{{ registro.cantidad }}</span></td>
+                                    <td class="text-right">${{ "%.2f"|format(registro.precio_unitario) }}</td>
+                                    <td class="text-right font-weight-bold">${{ "%.2f"|format(registro.subtotal) }}</td>
+                                    <td class="text-right">
+                                        <span class="badge {% if registro.utilidad > 0 %}badge-success{% else %}badge-danger{% endif %}">
+                                            ${{ "%.2f"|format(registro.utilidad) }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="9" class="text-center py-5 text-muted">
+                                        <i class="fas fa-inbox fa-2x mb-3"></i><br>
+                                        No hay ventas de antibióticos en el período seleccionado
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Por Vendedor -->
+        {% if por_vendedor %}
+        <div class="card mt-4" style="border-radius: 20px; border: none; box-shadow: 0 5px 20px rgba(0,0,0,0.04);">
+            <div class="card-body">
+                <h5 class="card-title font-weight-bold mb-3">
+                    <i class="fas fa-user-tie mr-2"></i> Ventas por Vendedor
+                </h5>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Vendedor</th>
+                                <th class="text-center">Ventas Realizadas</th>
+                                <th class="text-center">Unidades Vendidas</th>
+                                <th class="text-right">Total Ventas</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for vendedor in por_vendedor %}
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="user-avatar mr-2" style="width: 30px; height: 30px; font-size: 12px;">
+                                            {{ vendedor.vendedor[0]|upper }}
+                                        </div>
+                                        {{ vendedor.vendedor }}
+                                    </div>
+                                </td>
+                                <td class="text-center"><span class="badge badge-info">{{ vendedor.ventas_realizadas }}</span></td>
+                                <td class="text-center"><span class="badge badge-primary">{{ vendedor.unidades_vendidas }}</span></td>
+                                <td class="text-right font-weight-bold">${{ "%.2f"|format(vendedor.total_venta) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="d-flex justify-content-between align-items-center mt-4">
+            <div class="text-muted">
+                {% if registros %}
+                    Mostrando {{ registros|length }} registros
+                {% endif %}
+            </div>
+            <div>
+                <a href="{{ url_for('modulo_reportes_dashboard') }}" class="btn btn-outline-secondary" style="border-radius: 12px;">
+                    <i class="fas fa-arrow-left mr-2"></i> Volver a Reportes
+                </a>
+                {% if registros %}
+                <button onclick="window.print()" class="btn btn-primary" style="border-radius: 12px;">
+                    <i class="fas fa-print mr-2"></i> Imprimir Reporte
+                </button>
+                {% endif %}
+            </div>
+        </div>
+
+    </main>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

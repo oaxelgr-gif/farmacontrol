@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reporte Caducidad | FarmaControl</title>
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        :root { 
+            --primary-blue: #1e5ba0; 
+            --deep-blue: #0d3b66;
+            --bg-gray: #f0f2f5; 
+        }
+        
+        body { background-color: var(--bg-gray); font-family: 'Inter', 'Segoe UI', sans-serif; margin: 0; }
+
+        /* Sidebar Navigation (Exacto a Plantilla Base) */
+        .sidebar { 
+            width: 80px; height: 100vh; background: #fff; position: fixed; 
+            left: 0; top: 0; border-right: 1px solid #e1e4e8; 
+            display: flex; flex-direction: column; align-items: center; 
+            padding: 25px 0; z-index: 1100; 
+        }
+        .logo-img { width: 42px; margin-bottom: 30px; }
+        .sidebar-link { color: #adb5bd; font-size: 1.4rem; margin-bottom: 25px; transition: 0.3s; text-decoration: none; }
+        .sidebar-link:hover, .sidebar-link.active-link { color: var(--primary-blue); }
+        .logout-btn { margin-top: auto; color: #ff4757; font-size: 1.5rem; }
+
+
+                .user-profile-badge {
+            background: white; padding: 6px 6px 6px 18px; border-radius: 40px;
+            display: flex; align-items: center; box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+        .user-name { font-weight: 800; color: var(--deep-blue); font-size: 0.95rem; margin-right: 15px; }
+        .user-avatar { 
+            width: 40px; height: 40px; background: linear-gradient(135deg, var(--primary-blue), #4facfe);
+            color: white; border-radius: 50%; display: flex; align-items: center; 
+            justify-content: center; font-weight: 900;
+        }
+
+        .header-title { color: var(--deep-blue); font-weight: 900; font-size: 2.6rem; letter-spacing: -1.5px; }
+        .header-subtitle { color: #718096; font-weight: 600; font-size: 1.1rem; }
+
+
+        /* Contenido Principal */
+        .main-content { margin-left: 80px; padding: 40px 60px; }
+
+        /* Estilo Glass Card */
+        .glass-card {
+            background: white; border-radius: 24px; overflow: hidden;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.02);
+        }
+
+        /* Tablas */
+        .table thead th { background: #f8fafc; color: #718096; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; border: none; }
+        .table td { vertical-align: middle; }
+
+        /* REGLAS DE IMPRESIÓN EXCLUSIVA */
+        @media print {
+            .sidebar, .no-print, .btn, .user-profile-badge, p.text-muted { display: none !important; }
+            body { background: white !important; }
+            .main-content { margin: 0 !important; padding: 0 !important; width: 100% !important; }
+            .glass-card { box-shadow: none !important; border: none !important; border-radius: 0; }
+            .table { width: 100% !important; border-collapse: collapse; }
+            .table th { background: #eee !important; color: black !important; border: 1px solid #ddd !important; }
+            .table td { border: 1px solid #ddd !important; }
+            h1 { font-size: 22pt !important; color: black !important; text-align: center; }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar { display: none; }
+            .main-content { margin-left: 0; padding: 20px; }
+        }
+    </style>
+</head>
+<body>
+
+<aside class="sidebar no-print">
+    <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo" class="logo-img">
+    <a href="{{ url_for('inicio_farmacia_route') }}" class="sidebar-link" title="Inicio"><i class="fas fa-th-large"></i></a>
+    <a href="{{ url_for('punto_venta') }}" class="sidebar-link" title="Punto de Venta"><i class="fas fa-cash-register"></i></a>
+    <a href="{{ url_for('listar_productos') }}" class="sidebar-link" title="Inventario"><i class="fas fa-boxes-stacked"></i></a>
+    <a href="{{ url_for('modulo_reportes_dashboard') }}" class="sidebar-link active-link" title="Reportes"><i class="fas fa-file-waveform"></i></a>
+    <a href="{{ url_for('gestion_servicios') }}" class="sidebar-link active" title="Servicios Médicos"><i class="fas fa-stethoscope"></i></a>
+    <a href="{{ url_for('listar_usuarios') }}" class="sidebar-link" title="Usuarios"><i class="fas fa-users-cog"></i></a>
+    <a href="{{ url_for('Salir') }}" class="logout-btn" title="Cerrar Sesión"><i class="fas fa-sign-out-alt"></i></a>
+</aside>
+
+<main class="main-content">
+    <header class="d-flex justify-content-between align-items-center mb-4 no-print">
+        <div>
+            <h1 style="font-weight: 900; color: var(--deep-blue); letter-spacing: -1.5px; font-size: 2.2rem;">Caducidad Crítica</h1>
+            <p class="text-muted font-weight-bold">Filtro automático: Menos de 15 días o vencidos</p>
+        </div>
+        <button onclick="window.print()" class="btn btn-dark shadow-sm" style="border-radius: 14px; font-weight: 800; padding: 12px 24px;">
+            <i class="fas fa-print mr-2"></i> IMPRIMIR TABLA
+        </button>
+    </header>
+
+    <h1 class="d-none d-print-block">Reporte de Vencimientos Próximos (15 Días)</h1>
+
+    <div class="glass-card">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Producto / Lote</th>
+                        <th class="text-center">Existencia</th>
+                        <th class="text-right">Fecha Vencimiento</th>
+                        <th class="text-right">Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in productos %}
+                    <tr>
+                        <td>
+                            <div class="font-weight-bold" style="color: var(--deep-blue); font-size: 1.05rem;">{{ p.nombre }}</div>
+                            <small class="text-muted">Lote: {{ p.lote or 'S/L' }} | ID: {{ p.id }}</small>
+                        </td>
+                        <td class="text-center font-weight-bold" style="font-size: 1rem;">{{ p.stock_actual }} pz</td>
+                        <td class="text-right font-weight-bold">
+                            {{ p.fecha_caducidad.strftime('%d/%m/%Y') }}
+                        </td>
+                        <td class="text-right">
+                            {% if p.fecha_caducidad < hoy %}
+                                <span class="badge badge-danger p-2" style="border-radius: 8px; font-weight: 700;">VENCIDO</span>
+                            {% else %}
+                                <span class="badge badge-warning p-2" style="border-radius: 8px; color: #856404; font-weight: 700;">CRÍTICO</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" class="text-center py-5 text-muted font-weight-bold">
+                            No hay productos que venzan en los próximos 15 días.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="mt-4 no-print text-right">
+        <p class="mb-0 text-muted">Total de productos en riesgo: <strong>{{ productos|length }}</strong></p>
+    </div>
+</main>
+
+</body>
+</html>

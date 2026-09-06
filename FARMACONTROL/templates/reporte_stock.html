@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Crítico | FarmaControl</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        :root { 
+            --primary-blue: #1e5ba0; 
+            --deep-blue: #0d3b66;
+            --danger-red: #e74c3c;
+            --warning-orange: #f39c12;
+            --bg-gray: #f0f2f5; 
+        }
+        
+        body { background-color: var(--bg-gray); font-family: 'Inter', sans-serif; margin: 0; }
+
+        .sidebar { 
+            width: 80px; height: 100vh; background: #fff; position: fixed; 
+            left: 0; top: 0; border-right: 1px solid #e1e4e8; 
+            display: flex; flex-direction: column; align-items: center; 
+            padding: 25px 0; z-index: 1100; 
+        }
+        .logo-img { width: 42px; margin-bottom: 30px; }
+        .sidebar-link { color: #adb5bd; font-size: 1.4rem; margin-bottom: 25px; transition: 0.3s; text-decoration: none; }
+        .sidebar-link:hover, .sidebar-link.active-link { color: var(--primary-blue); }
+        .logout-btn { margin-top: auto; color: #ff4757; font-size: 1.5rem; }
+
+        /* CONTENIDO */
+        .main-content { margin-left: 80px; padding: 40px 60px; transition: 0.3s; }
+
+        /* USER BADGE */
+        .user-profile-badge {
+            background: white; padding: 6px 6px 6px 18px; border-radius: 40px;
+            display: flex; align-items: center; box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+        .user-name { font-weight: 800; color: var(--deep-blue); font-size: 0.95rem; margin-right: 15px; }
+        .user-avatar { 
+            width: 40px; height: 40px; background: linear-gradient(135deg, var(--primary-blue), #4facfe);
+            color: white; border-radius: 50%; display: flex; align-items: center; 
+            justify-content: center; font-weight: 900;
+        }
+
+        .header-title { color: var(--deep-blue); font-weight: 900; font-size: 2.6rem; letter-spacing: -1.5px; }
+        .header-subtitle { color: #718096; font-weight: 600; font-size: 1.1rem; }
+
+        /* CARD DE TABLA */
+        .report-card {
+            background: white; border-radius: 28px; padding: 35px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.02);
+        }
+
+        .btn-print {
+            background: var(--primary-blue); color: white; border-radius: 12px;
+            padding: 10px 25px; font-weight: 700; border: none; transition: 0.3s;
+        }
+
+        /* ESTADOS DE STOCK */
+        .badge-low { background: rgba(243, 156, 18, 0.1); color: var(--warning-orange); font-weight: 800; padding: 5px 12px; border-radius: 8px; font-size: 0.75rem; }
+        .badge-out { background: rgba(231, 76, 60, 0.1); color: var(--danger-red); font-weight: 800; padding: 5px 12px; border-radius: 8px; font-size: 0.75rem; }
+
+        @media print {
+            .no-print, .sidebar { display: none !important; }
+            .main-content { margin-left: 0 !important; padding: 20px !important; }
+            .report-card { box-shadow: none; border: 1px solid #eee; }
+            body { background: white; }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar { display: none; }
+            .main-content { margin-left: 0; padding: 20px; }
+        }
+    </style>
+</head>
+<body>
+
+<aside class="sidebar no-print">
+    <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo" class="logo-img">
+    <a href="{{ url_for('inicio_farmacia_route') }}" class="sidebar-link" title="Inicio"><i class="fas fa-th-large"></i></a>
+    <a href="{{ url_for('punto_venta') }}" class="sidebar-link" title="Punto de Venta"><i class="fas fa-cash-register"></i></a>
+    <a href="{{ url_for('listar_productos') }}" class="sidebar-link" title="Inventario"><i class="fas fa-boxes-stacked"></i></a>
+    <a href="{{ url_for('modulo_reportes_dashboard') }}" class="sidebar-link active-link" title="Reportes"><i class="fas fa-file-waveform"></i></a>
+        <a href="{{ url_for('gestion_servicios') }}" class="sidebar-link active" title="Servicios Médicos"><i class="fas fa-stethoscope"></i></a>
+    <a href="{{ url_for('listar_usuarios') }}" class="sidebar-link" title="Usuarios"><i class="fas fa-users-cog"></i></a>
+    <a href="{{ url_for('Salir') }}" class="logout-btn" title="Cerrar Sesión"><i class="fas fa-sign-out-alt"></i></a>
+</aside>
+
+    <main class="main-content">
+        <header class="d-flex justify-content-between align-items-center mb-5 no-print">
+            <div>
+                <h1 style="font-weight: 900; color: var(--deep-blue); font-size: 2.5rem; letter-spacing: -1.5px;">Stock Crítico</h1>
+                <p class="text-muted font-weight-bold">Productos que requieren atención inmediata</p>
+            </div>
+
+            <div class="d-flex align-items-center">
+                <button onclick="window.print()" class="btn-print mr-4">
+                    <i class="fas fa-print mr-2"></i> IMPRIMIR
+                </button>
+                <div class="user-profile-badge">
+                    <span class="mr-3 small font-weight-bold text-uppercase">{{ current_user.nombre }}</span>
+                    <div class="user-avatar">{{ current_user.nombre[0] | upper }}</div>
+                </div>
+            </div>
+        </header>
+
+        <div class="report-card">
+            <div class="table-responsive">
+                <table class="table table-borderless">
+                    <thead style="border-bottom: 2px solid #f0f2f5;">
+                        <tr>
+                            <th class="text-muted small font-weight-bold">CÓDIGO</th>
+                            <th class="text-muted small font-weight-bold">PRODUCTO</th>
+                            <th class="text-muted small font-weight-bold text-center">EXISTENCIA</th>
+                            <th class="text-muted small font-weight-bold text-center">MÍNIMO</th>
+                            <th class="text-muted small font-weight-bold text-center">ESTADO</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in productos %}
+                        <tr style="border-bottom: 1px solid #f8f9fa;">
+                            <td class="py-4 small font-weight-bold text-muted">{{ p.codigo_barras }}</td>
+                            <td class="py-4 font-weight-bold text-uppercase" style="color: var(--deep-blue);">{{ p.nombre }}</td>
+                            <td class="py-4 text-center">
+                                <span class="font-weight-900 {{ 'text-danger' if p.stock_actual == 0 else '' }}">
+                                    {{ p.stock_actual }}
+                                </span>
+                            </td>
+                            <td class="py-4 text-center text-muted font-weight-bold">{{ p.stock_minimo }}</td>
+                            <td class="py-4 text-center">
+                                {% if p.stock_actual == 0 %}
+                                    <span class="badge-out">AGOTADO</span>
+                                {% else %}
+                                    <span class="badge-low">Bajo</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center py-5">
+                                <i class="fas fa-check-circle text-success mb-3" style="font-size: 3rem;"></i>
+                                <p class="text-muted font-weight-bold">Inventario saludable. No hay productos con bajo stock.</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+</body>
+</html>

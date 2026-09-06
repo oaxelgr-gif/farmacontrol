@@ -1,0 +1,1045 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ventas Detalladas | FarmaControl</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <style>
+        :root { 
+            --primary-blue: #1e5ba0; 
+            --deep-blue: #0d3b66;
+            --success-green: #2ecc71;
+            --warning-orange: #f39c12;
+            --info-cyan: #00bcd4;
+            --bg-gray: #f0f2f5; 
+        }
+        
+        body { background-color: var(--bg-gray); font-family: 'Inter', sans-serif; margin: 0; min-height: 100vh; }
+
+        /* Sidebar */
+        .sidebar { 
+            width: 80px; height: 100vh; background: #fff; position: fixed; 
+            left: 0; top: 0; border-right: 1px solid #e1e4e8; 
+            display: flex; flex-direction: column; align-items: center; 
+            padding: 25px 0; z-index: 1100;
+        }
+        .logo-img { width: 42px; margin-bottom: 30px; }
+        .sidebar-link { color: #adb5bd; font-size: 1.4rem; margin-bottom: 25px; transition: 0.3s; }
+        .sidebar-link:hover { color: var(--primary-blue); }
+        .sidebar-link.active-link { color: var(--primary-blue); }
+        .logout-btn { margin-top: auto; color: #ff4757; font-size: 1.5rem; }
+
+        /* Contenido Principal */
+        .main-content { margin-left: 80px; padding: 40px 60px; transition: 0.3s; }
+
+        /* Perfil de Usuario */
+        .user-profile-badge {
+            background: white; padding: 6px 6px 6px 18px; border-radius: 40px;
+            display: flex; align-items: center; box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+        .user-name { font-weight: 800; color: var(--deep-blue); font-size: 0.95rem; margin-right: 15px; }
+        .user-avatar { 
+            width: 40px; height: 40px; background: linear-gradient(135deg, var(--primary-blue), #4facfe);
+            color: white; border-radius: 50%; display: flex; align-items: center; 
+            justify-content: center; font-weight: 900;
+        }
+
+        .header-title { color: var(--deep-blue); font-weight: 900; font-size: 2.6rem; letter-spacing: -1.5px; }
+        .header-subtitle { color: #718096; font-weight: 600; font-size: 1.1rem; }
+
+        /* Filtros */
+        .filter-card {
+            background: white; border-radius: 20px; padding: 25px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.04); margin-bottom: 30px;
+            border: 1px solid rgba(0,0,0,0.03);
+        }
+
+        /* Estadísticas */
+        .stats-card {
+            background: white; border-radius: 18px; padding: 20px; margin-bottom: 20px;
+            border-top: 5px solid var(--primary-blue); box-shadow: 0 5px 15px rgba(0,0,0,0.04);
+        }
+        .stats-number { font-size: 2.5rem; font-weight: 900; color: var(--deep-blue); line-height: 1; }
+        .stats-label { font-size: 0.9rem; color: #718096; font-weight: 600; }
+
+        /* Tabla */
+        .table-custom {
+            background: white; border-radius: 20px; overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.04);
+        }
+        .table-custom thead th {
+            background-color: #f8f9fa; border-bottom: 2px solid #e9ecef;
+            color: var(--deep-blue); font-weight: 800; font-size: 0.9rem;
+            text-transform: uppercase; padding: 15px 20px;
+        }
+        .table-custom tbody tr { transition: 0.2s; }
+        .table-custom tbody tr:hover { background-color: #f8f9ff; }
+        .table-custom tbody td { padding: 15px 20px; vertical-align: middle; border-top: 1px solid #f1f3f7; }
+
+        /* Badges */
+        .badge-efectivo { background-color: rgba(46, 204, 113, 0.1); color: #27ae60; }
+        .badge-tarjeta { background-color: rgba(52, 152, 219, 0.1); color: #2980b9; }
+        .badge-transferencia { background-color: rgba(155, 89, 182, 0.1); color: #8e44ad; }
+
+        /* Modal del Ticket - NUEVO - ESTILO PUNTO DE VENTA */
+        .modal-ticket {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(5px);
+        }
+        
+        .modal-ticket.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .modal-ticket-content {
+            background: white;
+            border-radius: 24px;
+            width: 90%;
+            max-width: 500px;
+            transform: translateY(30px) scale(0.95);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            overflow: hidden;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.3);
+        }
+        
+        .modal-ticket.active .modal-ticket-content {
+            transform: translateY(0) scale(1);
+        }
+        
+        .ticket-modal-header {
+            background: linear-gradient(135deg, var(--primary-blue), #2980b9);
+            color: white;
+            padding: 25px 30px;
+            text-align: center;
+            position: relative;
+        }
+        
+        .ticket-modal-header h4 {
+            font-weight: 900;
+            font-size: 1.5rem;
+            margin-bottom: 5px;
+        }
+        
+        .ticket-modal-header .close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: white;
+            opacity: 0.8;
+            font-size: 1.5rem;
+            background: none;
+            border: none;
+            cursor: pointer;
+        }
+        
+        .ticket-modal-header .close:hover {
+            opacity: 1;
+        }
+        
+        .ticket-modal-body {
+            padding: 0;
+            position: relative;
+            background: #f8f9fa;
+            min-height: 400px;
+        }
+        
+        .ticket-preview-container {
+            width: 100%;
+            height: 450px;
+            overflow: hidden;
+            position: relative;
+            background: #fff;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .ticket-iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            transform: scale(0.92);
+            transform-origin: top center;
+            transition: transform 0.3s ease;
+        }
+        
+        .ticket-iframe.loaded {
+            transform: scale(1);
+        }
+        
+        .ticket-modal-actions {
+            padding: 25px;
+            background: #f8f9fa;
+            border-top: 1px solid #e9ecef;
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        /* Animaciones de impresión */
+        .print-animation {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: var(--success-green);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 2rem;
+            z-index: 10;
+            opacity: 0;
+            animation: printPulse 1.5s ease-in-out;
+            box-shadow: 0 10px 30px rgba(39, 174, 96, 0.4);
+        }
+        
+        @keyframes printPulse {
+            0% { transform: translate(-50%, -50%) scale(0.3); opacity: 0; }
+            20% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+            80% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(1.8); opacity: 0; }
+        }
+        
+        .printer-effect {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent);
+            z-index: 5;
+            transform: translateX(-100%);
+            animation: printerScan 1.2s ease-out;
+        }
+        
+        @keyframes printerScan {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+        
+        /* Botones de acción estilo punto de venta */
+        .btn-print-modal {
+            background: var(--primary-blue);
+            color: white;
+            border: none;
+            padding: 14px 30px;
+            border-radius: 12px;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 1rem;
+            box-shadow: 0 5px 15px rgba(30, 91, 160, 0.3);
+            min-width: 180px;
+            justify-content: center;
+        }
+        
+        .btn-print-modal:hover {
+            background: var(--deep-blue);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(30, 91, 160, 0.4);
+        }
+        
+        .btn-print-modal:active {
+            transform: translateY(-1px);
+        }
+        
+        .btn-close-modal {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 14px 30px;
+            border-radius: 12px;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 1rem;
+            min-width: 180px;
+            justify-content: center;
+        }
+        
+        .btn-close-modal:hover {
+            background: #495057;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(108, 117, 125, 0.3);
+        }
+        
+        .loading-indicator {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 2;
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        .loading-indicator i {
+            font-size: 3rem;
+            color: var(--primary-blue);
+            margin-bottom: 15px;
+        }
+        
+        .ticket-info-badge {
+            background: rgba(30, 91, 160, 0.1);
+            border: 1px solid rgba(30, 91, 160, 0.2);
+            border-radius: 10px;
+            padding: 8px 15px;
+            font-size: 0.9rem;
+            color: var(--primary-blue);
+            font-weight: 600;
+            text-align: center;
+            margin-top: 15px;
+        }
+        
+        /* Botón de reimprimir en tabla */
+        .btn-reimprimir {
+            background: linear-gradient(135deg, var(--primary-blue), #4facfe);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 5px 10px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .btn-reimprimir:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(30, 91, 160, 0.3);
+        }
+
+        /* Media Queries */
+        @media (max-width: 768px) {
+            .sidebar { 
+                width: 100%; height: 60px; top: auto; bottom: 0; 
+                flex-direction: row; padding: 0; border-right: none; 
+                border-top: 1px solid #e1e4e8; justify-content: space-around;
+            }
+            .logo-img { display: none; }
+            .sidebar-link { margin-bottom: 0; font-size: 1.2rem; }
+            .logout-btn { margin-top: 0; font-size: 1.2rem; }
+            .main-content { margin-left: 0; padding: 20px 15px 100px 15px; }
+            .user-name { display: none; }
+            .header-title { font-size: 1.8rem; }
+            .header-subtitle { font-size: 0.9rem; }
+            
+            .modal-ticket-content {
+                width: 95%;
+                margin: 10px;
+            }
+            
+            .ticket-modal-actions {
+                flex-direction: column;
+            }
+            
+            .btn-print-modal, .btn-close-modal {
+                width: 100%;
+            }
+            
+            .ticket-preview-container {
+                height: 350px;
+            }
+        }
+        
+        @media print {
+            .sidebar, .no-print, .btn-action, .modal-ticket {
+                display: none !important;
+            }
+            
+            .main-content {
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            
+            .filter-card {
+                border: none !important;
+                box-shadow: none !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <aside class="sidebar">
+        <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo" class="logo-img">
+        <a href="{{ url_for('inicio_farmacia_route') }}" class="sidebar-link" title="Inicio"><i class="fas fa-th-large"></i></a>
+        <a href="{{ url_for('punto_venta') }}" class="sidebar-link" title="Punto de Venta"><i class="fas fa-cash-register"></i></a>
+        <a href="{{ url_for('listar_productos') }}" class="sidebar-link" title="Inventario"><i class="fas fa-boxes-stacked"></i></a>
+        <a href="{{ url_for('modulo_reportes_dashboard') }}" class="sidebar-link active-link" title="Reportes"><i class="fas fa-file-waveform"></i></a>
+        <a href="{{ url_for('Salir') }}" class="logout-btn" title="Cerrar Sesión"><i class="fas fa-sign-out-alt"></i></a>
+    </aside>
+
+    <main class="main-content">
+        <header class="d-flex justify-content-between align-items-center mb-5">
+            <div>
+                <h1 class="header-title">Ventas Detalladas</h1>
+                <p class="header-subtitle mb-0">Análisis completo de todas las transacciones</p>
+            </div>
+
+            <div class="user-profile-badge">
+                <span class="user-name text-uppercase">{{ current_user.nombre }}</span>
+                <div class="user-avatar shadow">
+                    {{ current_user.nombre[0] | upper }}
+                </div>
+            </div>
+        </header>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category if category != 'error' else 'danger' }} alert-dismissible fade show mb-4" style="border-radius: 15px;" role="alert">
+                        <i class="fas fa-info-circle mr-2"></i> {{ message }}
+                        <button type="button" class="close" data-dismiss="alert">&times;</button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Filtros -->
+        <div class="filter-card">
+            <form method="GET" action="{{ url_for('reporte_ventas_detalladas') }}">
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label font-weight-bold">Fecha Inicio</label>
+                        <input type="date" name="fecha_inicio" class="form-control" style="border-radius: 12px;" 
+                               value="{{ fecha_inicio }}">
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label font-weight-bold">Fecha Fin</label>
+                        <input type="date" name="fecha_fin" class="form-control" style="border-radius: 12px;" 
+                               value="{{ fecha_fin }}">
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label font-weight-bold">Vendedor</label>
+                        <select name="usuario_id" class="form-control" style="border-radius: 12px;">
+                            <option value="">Todos los vendedores</option>
+                            {% for usuario in usuarios %}
+                                <option value="{{ usuario.id }}" {% if usuario.id|string == usuario_id %}selected{% endif %}>
+                                    {{ usuario.nombre }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label font-weight-bold">Método de Pago</label>
+                        <select name="metodo_pago" class="form-control" style="border-radius: 12px;">
+                            <option value="">Todos los métodos</option>
+                            {% for metodo in metodos %}
+                                <option value="{{ metodo.id }}" {% if metodo.id|string == metodo_pago %}selected{% endif %}>
+                                    {{ metodo.nombre }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label font-weight-bold">Cliente</label>
+                        <select name="cliente_id" class="form-control" style="border-radius: 12px;">
+                            <option value="">Todos los clientes</option>
+                            {% for cliente in clientes %}
+                                <option value="{{ cliente.id }}" {% if cliente.id|string == cliente_id %}selected{% endif %}>
+                                    {{ cliente.nombre }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3 d-flex align-items-end">
+                        <div class="w-100">
+                            <button type="submit" class="btn btn-primary w-100" style="border-radius: 12px; padding: 10px;">
+                                <i class="fas fa-filter mr-2"></i> Aplicar Filtros
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <a href="{{ url_for('reporte_ventas_detalladas') }}" class="btn btn-outline-secondary" style="border-radius: 12px;">
+                        <i class="fas fa-redo mr-2"></i> Limpiar Filtros
+                    </a>
+                </div>
+            </form>
+        </div>
+
+        <!-- Estadísticas -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="stats-card">
+                    <div class="stats-number">{{ total_ventas }}</div>
+                    <div class="stats-label">Ventas Totales</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card" style="border-top-color: var(--success-green);">
+                    <div class="stats-number">${{ "%.2f"|format(total_general) }}</div>
+                    <div class="stats-label">Total General</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card" style="border-top-color: var(--info-cyan);">
+                    <div class="stats-number">${{ "%.2f"|format(total_efectivo) }}</div>
+                    <div class="stats-label">Ventas Efectivo</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stats-card" style="border-top-color: var(--warning-orange);">
+                    <div class="stats-number">${{ "%.2f"|format(total_tarjeta) }}</div>
+                    <div class="stats-label">Ventas Tarjeta</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ventas por Día -->
+        {% if ventas_por_dia %}
+        <div class="card mb-4" style="border-radius: 20px; border: none; box-shadow: 0 5px 20px rgba(0,0,0,0.04);">
+            <div class="card-body">
+                <h5 class="card-title font-weight-bold mb-3">
+                    <i class="fas fa-calendar-alt mr-2"></i> Ventas por Día
+                </h5>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th class="text-center">Cantidad de Ventas</th>
+                                <th class="text-right">Monto Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for venta_dia in ventas_por_dia %}
+                            <tr>
+                                <td>{{ venta_dia.fecha.strftime('%d/%m/%Y') }}</td>
+                                <td class="text-center"><span class="badge badge-primary">{{ venta_dia.cantidad }}</span></td>
+                                <td class="text-right font-weight-bold">${{ "%.2f"|format(venta_dia.monto) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Tabla Principal -->
+        <div class="card" style="border-radius: 20px; border: none; box-shadow: 0 5px 20px rgba(0,0,0,0.04);">
+            <div class="card-body">
+                <h5 class="card-title font-weight-bold mb-3">
+                    <i class="fas fa-list mr-2"></i> Detalle de Ventas
+                    <span class="badge badge-primary ml-2">{{ ventas|length }}</span>
+                </h5>
+                <div class="table-responsive">
+                    <table class="table table-custom">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Folio</th>
+                                <th>Vendedor</th>
+                                <th>Cliente</th>
+                                <th>Método Pago</th>
+                                <th class="text-right">Total</th>
+                                <th class="text-right">Pago Recibido</th>
+                                <th class="text-right">Cambio</th>
+                                <th>Productos</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if ventas %}
+                                {% for venta in ventas %}
+                                <tr>
+                                    <td>{{ venta.fecha.strftime('%d/%m/%Y %H:%M') }}</td>
+                                    <td>
+                                        <span class="badge badge-light" style="font-family: monospace;">
+                                            {{ venta.folio }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="user-avatar mr-2" style="width: 30px; height: 30px; font-size: 12px;">
+                                                {{ venta.vendedor[0]|upper }}
+                                            </div>
+                                            {{ venta.vendedor }}
+                                        </div>
+                                    </td>
+                                    <td>{{ venta.cliente or 'General' }}</td>
+                                    <td>
+                                        {% if venta.metodo_pago == 'Efectivo' %}
+                                            <span class="badge badge-efectivo p-2">{{ venta.metodo_pago }}</span>
+                                        {% elif venta.metodo_pago == 'Tarjeta de Crédito' or venta.metodo_pago == 'Tarjeta de Débito' %}
+                                            <span class="badge badge-tarjeta p-2">{{ venta.metodo_pago }}</span>
+                                        {% else %}
+                                            <span class="badge badge-transferencia p-2">{{ venta.metodo_pago }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-right font-weight-bold">${{ "%.2f"|format(venta.total) }}</td>
+                                    <td class="text-right">${{ "%.2f"|format(venta.pago_recibido) }}</td>
+                                    <td class="text-right">${{ "%.2f"|format(venta.cambio_entregado) }}</td>
+                                    <td>
+                                        <small class="text-muted" title="{{ venta.productos_resumen }}">
+                                            {{ venta.productos_resumen[:50] }}{% if venta.productos_resumen|length > 50 %}...{% endif %}
+                                        </small>
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('ver_detalle_venta', venta_id=venta.id) }}" 
+                                           class="btn btn-sm btn-outline-primary" style="border-radius: 8px;"
+                                           title="Ver Detalle">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <button onclick="mostrarTicketVistaPrevia({{ venta.id }}, '{{ venta.folio }}')" 
+                                           class="btn btn-sm btn-reimprimir ml-1"
+                                           title="Reimprimir Ticket">
+                                            <i class="fas fa-print mr-1"></i> Ticket
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="10" class="text-center py-5 text-muted">
+                                        <i class="fas fa-inbox fa-2x mb-3"></i><br>
+                                        No hay ventas registradas con los filtros aplicados
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ventas por Vendedor -->
+        {% if ventas_por_vendedor %}
+        <div class="card mt-4" style="border-radius: 20px; border: none; box-shadow: 0 5px 20px rgba(0,0,0,0.04);">
+            <div class="card-body">
+                <h5 class="card-title font-weight-bold mb-3">
+                    <i class="fas fa-user-tie mr-2"></i> Rendimiento por Vendedor
+                </h5>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Vendedor</th>
+                                <th class="text-center">Ventas Realizadas</th>
+                                <th class="text-right">Monto Total</th>
+                                <th class="text-right">Promedio por Venta</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for vendedor in ventas_por_vendedor %}
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="user-avatar mr-2" style="width: 30px; height: 30px; font-size: 12px;">
+                                            {{ vendedor.vendedor[0]|upper }}
+                                        </div>
+                                        {{ vendedor.vendedor }}
+                                    </div>
+                                </td>
+                                <td class="text-center"><span class="badge badge-info">{{ vendedor.ventas }}</span></td>
+                                <td class="text-right font-weight-bold">${{ "%.2f"|format(vendedor.monto) }}</td>
+                                <td class="text-right">${{ "%.2f"|format(vendedor.monto / vendedor.ventas) if vendedor.ventas > 0 else 0 }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="d-flex justify-content-between align-items-center mt-4">
+            <div class="text-muted">
+                {% if ventas %}
+                    Mostrando {{ ventas|length }} ventas • Total General: ${{ "%.2f"|format(total_general) }}
+                {% endif %}
+            </div>
+            <div>
+                <a href="{{ url_for('modulo_reportes_dashboard') }}" class="btn btn-outline-secondary" style="border-radius: 12px;">
+                    <i class="fas fa-arrow-left mr-2"></i> Volver a Reportes
+                </a>
+                {% if ventas %}
+                <button onclick="window.print()" class="btn btn-primary" style="border-radius: 12px;">
+                    <i class="fas fa-print mr-2"></i> Imprimir Reporte
+                </button>
+                {% endif %}
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Modal para vista previa del ticket - NUEVO -->
+    <div class="modal-ticket" id="modalTicket">
+        <div class="modal-ticket-content">
+            <div class="ticket-modal-header">
+                <h4 class="mb-0 font-weight-bold">VISTA PREVIA DEL TICKET</h4>
+                <p class="mb-0 small opacity-90" id="ticketFolio">Folio: Cargando...</p>
+                <button type="button" class="close" onclick="cerrarModalTicket()" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="ticket-modal-body">
+                <div class="print-animation" id="printAnimation">
+                    <i class="fas fa-print"></i>
+                </div>
+                <div class="printer-effect" id="printerEffect"></div>
+                
+                <div class="loading-indicator" id="loadingIndicator">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p class="mt-2 font-weight-bold">Cargando ticket...</p>
+                </div>
+                
+                <div class="ticket-preview-container">
+                    <iframe class="ticket-iframe" id="ticketIframe" onload="ticketCargado()"></iframe>
+                </div>
+                
+                <div class="ticket-info-badge" id="ticketInfo">
+                    <i class="fas fa-info-circle mr-2"></i>
+                    Total: Cargando...
+                </div>
+            </div>
+            <div class="ticket-modal-actions">
+                <button class="btn-print-modal" onclick="imprimirTicket()" id="btnImprimirTicket">
+                    <i class="fas fa-print mr-1"></i> IMPRIMIR TICKET
+                </button>
+                <button class="btn-close-modal" onclick="cerrarModalTicket()">
+                    <i class="fas fa-times mr-1"></i> CERRAR
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        $(document).ready(function() {
+            // Auto-close alerts after 5 seconds
+            window.setTimeout(function() {
+                $(".alert").fadeTo(500, 0).slideUp(500, function() {
+                    $(this).remove();
+                });
+            }, 5000);
+            
+            // Atajos de teclado
+            document.addEventListener('keydown', function(e) {
+                // F12 para reimprimir el primer ticket de la lista
+                if (e.key === 'F12') {
+                    e.preventDefault();
+                    const firstTicketBtn = document.querySelector('.btn-reimprimir');
+                    if (firstTicketBtn) {
+                        const ventaId = firstTicketBtn.getAttribute('onclick').match(/\d+/)[0];
+                        const folio = firstTicketBtn.closest('tr').querySelector('.badge-light').textContent;
+                        mostrarTicketVistaPrevia(ventaId, folio);
+                    }
+                }
+                
+                // Ctrl+P para imprimir desde el modal
+                if (e.ctrlKey && e.key === 'p' && document.getElementById('modalTicket').classList.contains('active')) {
+                    e.preventDefault();
+                    imprimirTicket();
+                }
+                
+                // Escape para cerrar modal
+                if (e.key === 'Escape' && document.getElementById('modalTicket').classList.contains('active')) {
+                    e.preventDefault();
+                    cerrarModalTicket();
+                }
+            });
+        });
+        
+        // Variables de estado
+        let ventaActualId = null;
+        let ticketCargadoCorrectamente = false;
+        let modalAbierto = false;
+        
+        // Función para mostrar el modal con animación
+        function mostrarTicketVistaPrevia(ventaId, folio) {
+            if (modalAbierto) return;
+            
+            const modal = document.getElementById('modalTicket');
+            const iframe = document.getElementById('ticketIframe');
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            const printAnimation = document.getElementById('printAnimation');
+            const printerEffect = document.getElementById('printerEffect');
+            const btnImprimirTicket = document.getElementById('btnImprimirTicket');
+            const ticketFolio = document.getElementById('ticketFolio');
+            const ticketInfo = document.getElementById('ticketInfo');
+            
+            // Guardar ID de venta actual
+            ventaActualId = ventaId;
+            
+            // Resetear estado
+            ticketCargadoCorrectamente = false;
+            modalAbierto = true;
+            
+            // Actualizar información
+            ticketFolio.textContent = `Folio: ${folio}`;
+            ticketInfo.innerHTML = `<i class="fas fa-info-circle mr-2"></i>Cargando información del ticket...`;
+            
+            // Mostrar loading
+            loadingIndicator.style.display = 'block';
+            printAnimation.style.display = 'none';
+            printerEffect.style.display = 'none';
+            
+            // Deshabilitar botón de imprimir
+            btnImprimirTicket.disabled = true;
+            btnImprimirTicket.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> CARGANDO...';
+            
+            // Mostrar el modal con animación
+            modal.classList.add('active');
+            
+            // Cargar el ticket en el iframe
+            const ticketUrl = `/ticket/reimprimir/${ventaId}`;
+            iframe.src = ticketUrl;
+            
+            // Ejecutar animación de impresión después de un breve retraso
+            setTimeout(() => {
+                printAnimation.style.display = 'flex';
+                setTimeout(() => {
+                    printAnimation.style.display = 'none';
+                    
+                    // Efecto de escaneo de impresora
+                    printerEffect.style.display = 'block';
+                    setTimeout(() => {
+                        printerEffect.style.display = 'none';
+                    }, 1200);
+                }, 1500);
+            }, 500);
+        }
+        
+        // Función llamada cuando el iframe se carga
+        function ticketCargado() {
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            const iframe = document.getElementById('ticketIframe');
+            const btnImprimirTicket = document.getElementById('btnImprimirTicket');
+            const ticketInfo = document.getElementById('ticketInfo');
+            
+            // Ocultar loading indicator
+            loadingIndicator.style.display = 'none';
+            
+            // Añadir clase para animación de entrada
+            setTimeout(() => {
+                iframe.classList.add('loaded');
+            }, 100);
+            
+            // Habilitar botón de imprimir
+            btnImprimirTicket.disabled = false;
+            btnImprimirTicket.innerHTML = '<i class="fas fa-print mr-1"></i> IMPRIMIR TICKET';
+            
+            // Actualizar información del ticket
+            try {
+                if (iframe.contentWindow) {
+                    // Obtener información del ticket del iframe
+                    const ticketDoc = iframe.contentDocument || iframe.contentWindow.document;
+                    const totalElement = ticketDoc.querySelector('.total-amount, .total, .total-venta');
+                    if (totalElement) {
+                        const totalText = totalElement.textContent.trim();
+                        ticketInfo.innerHTML = `<i class="fas fa-info-circle mr-2"></i>Total: ${totalText}`;
+                    }
+                }
+            } catch (e) {
+                // Fallback si no se puede acceder al iframe
+                ticketInfo.innerHTML = `<i class="fas fa-info-circle mr-2"></i>Ticket cargado`;
+            }
+            
+            ticketCargadoCorrectamente = true;
+            
+            // Enviar mensaje al iframe para que sepa que está en vista previa
+            setTimeout(() => {
+                if (iframe.contentWindow) {
+                    iframe.contentWindow.postMessage({ 
+                        type: 'vistaPrevia', 
+                        ventaId: ventaActualId 
+                    }, '*');
+                }
+            }, 500);
+        }
+        
+        // Función para imprimir el ticket desde el iframe
+        function imprimirTicket() {
+            if (!ticketCargadoCorrectamente) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Espere',
+                    text: 'El ticket aún se está cargando...',
+                    timer: 1500,
+                    showConfirmButton: false
+                });
+                return;
+            }
+            
+            const iframe = document.getElementById('ticketIframe');
+            const printAnimation = document.getElementById('printAnimation');
+            const printerEffect = document.getElementById('printerEffect');
+            const btnImprimirTicket = document.getElementById('btnImprimirTicket');
+            
+            if (iframe && iframe.contentWindow) {
+                // Deshabilitar botón durante la impresión
+                btnImprimirTicket.disabled = true;
+                btnImprimirTicket.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> IMPRIMIENDO...';
+                
+                // Mostrar animación de impresión
+                printAnimation.style.display = 'flex';
+                printerEffect.style.display = 'block';
+                
+                // Enviar mensaje al iframe para que imprima
+                setTimeout(() => {
+                    iframe.contentWindow.postMessage({ type: 'imprimir' }, '*');
+                    
+                    // También intentar imprimir directamente
+                    setTimeout(() => {
+                        try {
+                            iframe.contentWindow.focus();
+                            iframe.contentWindow.print();
+                        } catch (e) {
+                            console.log("Impresión automática no disponible");
+                        }
+                        
+                        // Ocultar animaciones
+                        setTimeout(() => {
+                            printAnimation.style.display = 'none';
+                            printerEffect.style.display = 'none';
+                            
+                            // Restaurar botón
+                            btnImprimirTicket.disabled = false;
+                            btnImprimirTicket.innerHTML = '<i class="fas fa-print mr-1"></i> IMPRIMIR TICKET';
+                            
+                            // Mostrar notificación de éxito
+                            Swal.fire({
+                                icon: 'success',
+                                title: '¡Impresión iniciada!',
+                                text: 'El ticket se está enviando a la impresora',
+                                timer: 2000,
+                                showConfirmButton: false,
+                                position: 'bottom-end',
+                                toast: true
+                            });
+                        }, 1000);
+                    }, 500);
+                }, 300);
+            }
+        }
+        
+        // Función para cerrar el modal
+        function cerrarModalTicket() {
+            const modal = document.getElementById('modalTicket');
+            const iframe = document.getElementById('ticketIframe');
+            const btnImprimirTicket = document.getElementById('btnImprimirTicket');
+            
+            // Cerrar con animación
+            modal.classList.remove('active');
+            
+            // Limpiar el iframe después de la animación
+            setTimeout(() => {
+                iframe.src = 'about:blank';
+                iframe.classList.remove('loaded');
+                
+                // Resetear variables de estado
+                modalAbierto = false;
+                ticketCargadoCorrectamente = false;
+                ventaActualId = null;
+                btnImprimirTicket.disabled = true;
+                btnImprimirTicket.innerHTML = '<i class="fas fa-print mr-1"></i> IMPRIMIR TICKET';
+            }, 400);
+        }
+        
+        // Escuchar mensajes desde el iframe
+        window.addEventListener('message', function(event) {
+            if (event.data && event.data.type === 'impresionCompletada') {
+                // Notificación de éxito
+                Swal.fire({
+                    icon: 'success',
+                    title: '¡Ticket impreso!',
+                    text: 'La impresión se ha completado correctamente',
+                    timer: 1500,
+                    showConfirmButton: false,
+                    position: 'bottom-end',
+                    toast: true
+                });
+                
+                // Cerrar modal automáticamente (opcional)
+                // setTimeout(() => {
+                //     cerrarModalTicket();
+                // }, 1000);
+            }
+            
+            if (event.data && event.data.type === 'errorCarga') {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error al cargar',
+                    text: 'No se pudo cargar el ticket',
+                    confirmButtonText: 'Reintentar',
+                    showCancelButton: true,
+                    cancelButtonText: 'Cerrar'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        // Recargar el iframe
+                        const iframe = document.getElementById('ticketIframe');
+                        iframe.src = `/ticket/reimprimir/${ventaActualId}`;
+                    } else {
+                        cerrarModalTicket();
+                    }
+                });
+            }
+            
+            // Manejar información del ticket
+            if (event.data && event.data.type === 'ticketInfo') {
+                const ticketInfo = document.getElementById('ticketInfo');
+                if (event.data.total) {
+                    ticketInfo.innerHTML = `<i class="fas fa-info-circle mr-2"></i>Total: $${parseFloat(event.data.total).toFixed(2)}`;
+                }
+                if (event.data.metodoPago) {
+                    ticketInfo.innerHTML += ` | ${event.data.metodoPago}`;
+                }
+            }
+        });
+        
+        // Función para formatear números como moneda
+        function formatCurrency(value) {
+            return '$' + parseFloat(value).toLocaleString('es-MX', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        }
+        
+        // Añadir tooltips a los botones
+        $(function () {
+            $('[title]').tooltip();
+        });
+    </script>
+</body>
+</html>

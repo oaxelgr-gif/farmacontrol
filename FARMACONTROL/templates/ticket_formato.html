@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Ticket {{ venta.folio }}</title>
+    <style>
+        body { font-family: 'Courier New', monospace; width: 75mm; font-size: 11px; margin: 0; padding: 4mm; color: #000; }
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        .bold { font-weight: bold; }
+        .line { border-top: 1px dashed #000; margin: 2mm 0; }
+        table { width: 100%; border-collapse: collapse; margin: 2mm 0; }
+        .sub-info { font-size: 10px; margin-bottom: 1mm; }
+        .total-section { margin-top: 2mm; line-height: 1.4; }
+    </style>
+</head>
+<body onload="procesarDatosTicket();">
+    <div class="text-center">
+        <span class="bold" style="font-size: 14px;">FARMACIA CONTROL</span><br>
+        <div class="sub-info">
+            Op: {{ venta.id }} | CAJA: ESTACION01 | Ticket: {{ venta.folio }}<br>
+            Fecha: {{ venta.fecha.strftime('%d-%m-%Y') }} | Hora: {{ venta.fecha.strftime('%H:%M:%S') }}<br>
+            Atendido por: {{ venta.farmaceutico }}
+        </div>
+    </div>
+    
+    <div class="line"></div>
+    
+    <table>
+        <thead>
+            <tr>
+                <th align="left">DESC.</th>
+                <th align="center">CANT</th>
+                <th align="right">P.U</th>
+                <th align="right">TOTAL</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for d in detalles %}
+            <tr>
+                <td colspan="4" style="padding-top: 1mm;">{{ d.producto_nombre }}</td>
+            </tr>
+            <tr>
+                <td></td>
+                <td align="center">{{ d.cantidad }}</td>
+                <td align="right">${{ "{:,.2f}".format(d.precio_unitario) }}</td>
+                <td align="right">${{ "{:,.2f}".format(d.subtotal) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    <div class="line"></div>
+    
+    <div class="text-right total-section">
+        <span class="bold" style="font-size: 12px;">TOTAL VENTA: ${{ "{:,.2f}".format(venta.total) }}</span><br>
+        <div style="margin-top: 1mm;">
+            RECIBIDO: $<span id="val-pago">{{ "{:,.2f}".format(venta.pago_recibido) if venta.pago_recibido else "0.00" }}</span><br>
+            <span class="bold">SU CAMBIO: $<span id="val-cambio">{{ "{:,.2f}".format(venta.cambio_entregado) if venta.cambio_entregado else "0.00" }}</span></span>
+        </div>
+    </div>
+
+    <div class="line"></div>
+    
+    <div class="text-center sub-info">
+        Método de pago: {{ venta.metodo }}<br>
+        Cliente: {{ venta.cliente }}<br>
+        ID Venta: #{{ venta.id }}
+    </div>
+
+    <div class="text-center bold" style="margin-top:5mm">
+        ¡GRACIAS POR SU COMPRA!<br>
+        Conserve su ticket para cualquier aclaración.
+    </div>
+
+    <script>
+        function procesarDatosTicket() {
+            const params = new URLSearchParams(window.location.search);
+            const pagoUrl = params.get('pago');
+            const cambioUrl = params.get('cambio');
+
+            // Si los datos vienen en la URL (venta recién hecha), sobrescribimos lo que traiga la BD
+            if (pagoUrl !== null) {
+                document.getElementById('val-pago').innerText = parseFloat(pagoUrl).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            }
+            if (cambioUrl !== null) {
+                document.getElementById('val-cambio').innerText = parseFloat(cambioUrl).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            }
+
+            // Ejecutar impresión automáticamente
+            setTimeout(() => {
+                window.print();
+            }, 500);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Auditoría de Antibióticos | FarmaControl</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root { 
+            --primary-blue: #1e5ba0; 
+            --deep-blue: #0d3b66;
+            --success-green: #2ecc71;
+            --bg-gray: #f0f2f5; 
+            --orange-alert: #f39c12;
+        }
+        
+        body { background-color: var(--bg-gray); font-family: 'Inter', 'Segoe UI', sans-serif; margin: 0; }
+
+        /* Sidebar Pro */
+        .sidebar { 
+            width: 80px; height: 100vh; background: #fff; position: fixed; 
+            left: 0; top: 0; border-right: 1px solid #e1e4e8; 
+            display: flex; flex-direction: column; align-items: center; 
+            padding: 25px 0; z-index: 1100; 
+        }
+        .logo-img { width: 42px; margin-bottom: 30px; }
+        .sidebar-link { color: #adb5bd; font-size: 1.4rem; margin-bottom: 25px; transition: 0.3s; text-decoration: none; }
+        .sidebar-link:hover, .sidebar-link.active-link { color: var(--primary-blue); }
+        .logout-btn { margin-top: auto; color: #ff4757; font-size: 1.5rem; }
+
+        .main-content { margin-left: 80px; padding: 40px 60px; }
+
+        /* Perfil de Usuario */
+        .user-profile-badge {
+            background: white; padding: 6px 6px 6px 18px; border-radius: 40px;
+            display: flex; align-items: center; box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+        .user-name { font-weight: 800; color: var(--deep-blue); font-size: 0.95rem; margin-right: 15px; }
+        .user-avatar { 
+            width: 40px; height: 40px; background: linear-gradient(135deg, var(--primary-blue), #4facfe);
+            color: white; border-radius: 50%; display: flex; align-items: center; 
+            justify-content: center; font-weight: 900;
+        }
+
+        .header-title { color: var(--deep-blue); font-weight: 900; font-size: 2.6rem; letter-spacing: -1.5px; }
+        .header-subtitle { color: #718096; font-weight: 600; font-size: 1.1rem; }
+
+
+        /* Report Cards */
+        .report-card {
+            background: white; border-radius: 25px; padding: 35px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.02);
+            margin-bottom: 30px;
+        }
+
+        .section-title {
+            font-weight: 900; color: var(--deep-blue); font-size: 1.1rem;
+            text-transform: uppercase; letter-spacing: 1px;
+            border-left: 5px solid var(--primary-blue); padding-left: 15px; margin-bottom: 25px;
+        }
+
+        /* Tablas */
+        .table-audit thead th { 
+            background: #f8fafc; color: var(--deep-blue); 
+            font-weight: 800; text-transform: uppercase; font-size: 0.65rem;
+            letter-spacing: 1px; border: none; padding: 12px;
+        }
+        .table-audit td { vertical-align: middle; padding: 12px; font-size: 0.85rem; border-top: 1px solid #f1f5f9; }
+        
+        .badge-folio { background: #eef2ff; color: #4338ca; font-weight: 800; padding: 4px 8px; border-radius: 6px; }
+
+        /* Impresión */
+        @media print { 
+            .no-print, .sidebar { display: none !important; } 
+            .main-content { margin: 0; padding: 0; width: 100%; }
+            .report-card { box-shadow: none; border: 1px solid #000; padding: 20px; border-radius: 0; page-break-inside: avoid; }
+            body { background: white; }
+            .section-title { border-left: 5px solid black; color: black; }
+            .signature-section { display: flex !important; justify-content: space-around; margin-top: 50px; }
+        }
+        .signature-section { display: none; }
+    </style>
+</head>
+<body>
+
+<aside class="sidebar no-print">
+    <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo" class="logo-img">
+    <a href="{{ url_for('inicio_farmacia_route') }}" class="sidebar-link" title="Inicio"><i class="fas fa-th-large"></i></a>
+    <a href="{{ url_for('punto_venta') }}" class="sidebar-link" title="Punto de Venta"><i class="fas fa-cash-register"></i></a>
+    <a href="{{ url_for('listar_productos') }}" class="sidebar-link" title="Inventario"><i class="fas fa-boxes-stacked"></i></a>
+    <a href="{{ url_for('modulo_reportes_dashboard') }}" class="sidebar-link active-link" title="Reportes"><i class="fas fa-file-waveform"></i></a>
+    <a href="{{ url_for('gestion_servicios') }}" class="sidebar-link active" title="Servicios Médicos"><i class="fas fa-stethoscope"></i></a>
+    <a href="{{ url_for('listar_usuarios') }}" class="sidebar-link" title="Usuarios"><i class="fas fa-users-cog"></i></a>
+    <a href="{{ url_for('Salir') }}" class="logout-btn" title="Cerrar Sesión"><i class="fas fa-sign-out-alt"></i></a>
+</aside>
+
+
+<main class="main-content">
+    <header class="d-flex justify-content-between align-items-center mb-5 no-print">
+        <div>
+            <h1 style="font-weight: 900; color: var(--deep-blue); font-size: 2.2rem; letter-spacing: -1.5px;">Auditoría de Antibióticos</h1>
+            <p class="text-muted font-weight-bold">Medicamentos Fracción IV - Control Sanitario</p>
+        </div>
+        <div class="d-flex align-items-center">
+            <button onclick="window.print()" class="btn btn-dark mr-4 font-weight-bold" style="border-radius: 12px; padding: 10px 25px;">
+                <i class="fas fa-print mr-2"></i> IMPRIMIR TODO
+            </button>
+            <div class="user-profile-badge">
+                <span class="user-name text-uppercase">{{ current_user.nombre }}</span>
+                <div class="user-avatar shadow">{{ current_user.nombre[0] | upper }}</div>
+            </div>
+        </div>
+    </header>
+
+    <div class="d-none d-print-block text-center mb-4">
+        <h2 style="font-weight: 900;">FARMA CONTROL - REPORTE DE CONTROL SANITARIO</h2>
+        <p class="font-weight-bold">FECHA DE REPORTE: {{ current_time }}</p>
+    </div>
+
+    <div class="report-card">
+        <h3 class="section-title">1. Registro Exhaustivo de Ventas</h3>
+        <div class="table-responsive">
+            <table class="table table-audit">
+                <thead>
+                    <tr>
+                        <th>Folio</th>
+                        <th>Fecha/Hora</th>
+                        <th>Medicamento</th>
+                        <th>Lote</th>
+                        <th class="text-center">Cant.</th>
+                        <th>Vendedor</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in seguimiento %}
+                    <tr>
+                        <td><span class="badge-folio">#{{ item.folio_ticket }}</span></td>
+                        <td>{{ item.fecha_dato }}</td>
+                        <td class="font-weight-bold">{{ item.medicamento }}</td>
+                        <td><code class="text-dark">{{ item.lote or 'N/A' }}</code></td>
+                        <td class="text-center"><strong>{{ item.cantidad }}</strong></td>
+                        <td>{{ item.vendedor }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="6" class="text-center py-4">No hay datos de ventas disponibles.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="report-card">
+        <h3 class="section-title">2. Libro de Control (Recetario Médico)</h3>
+        <div class="table-responsive">
+            <table class="table table-audit">
+                <thead>
+                    <tr>
+                        <th>Folio Ticket</th>
+                        <th>Médico Prescriptor</th>
+                        <th>Cédula Profesional</th>
+                        <th>Institución / Universidad</th>
+                        <th>Dirección</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in seguimiento %}
+                    <tr>
+                        <td class="font-weight-bold">#{{ item.folio_ticket }}</td>
+                        <td>{{ item.medico_nombre or 'Dr. Pendiente' }}</td>
+                        <td><span class="text-primary font-weight-bold">{{ item.cedula or '00000000' }}</span></td>
+                        <td>{{ item.institucion or 'Particular' }}</td>
+                        <td class="small">{{ item.direccion_medico or 'Domicilio Conocido' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="signature-section">
+            <div class="text-center" style="width: 250px; border-top: 1px solid black; padding-top: 10px;">
+                <p class="mb-0 font-weight-bold" style="font-size: 0.7rem;">FIRMA DEL RESPONSABLE SANITARIO</p>
+            </div>
+            <div class="text-center" style="width: 250px; border-top: 1px solid black; padding-top: 10px;">
+                <p class="mb-0 font-weight-bold" style="font-size: 0.7rem;">SELLO DE LA FARMACIA</p>
+            </div>
+        </div>
+    </div>
+</main>
+
+</body>
+</html>

@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Reporte Clientes | FarmaControl</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root { --primary-blue: #1e5ba0; --deep-blue: #0d3b66; --bg-gray: #f0f2f5; --gold: #f1c40f; }
+        body { background-color: var(--bg-gray); font-family: 'Inter', sans-serif; margin: 0; display: flex; }
+
+                .sidebar { 
+            width: 80px; height: 100vh; background: #fff; position: fixed; 
+            left: 0; top: 0; border-right: 1px solid #e1e4e8; 
+            display: flex; flex-direction: column; align-items: center; 
+            padding: 25px 0; z-index: 1100; 
+        }
+        .logo-img { width: 42px; margin-bottom: 30px; }
+        .sidebar-link { color: #adb5bd; font-size: 1.4rem; margin-bottom: 25px; transition: 0.3s; text-decoration: none; }
+        .sidebar-link:hover, .sidebar-link.active-link { color: var(--primary-blue); }
+        .logout-btn { margin-top: auto; color: #ff4757; font-size: 1.5rem; }
+
+        .main-content { margin-left: 80px; padding: 40px 60px; flex: 1; }
+        .report-card { background: white; border-radius: 30px; padding: 30px; box-shadow: 0 10px 40px rgba(0,0,0,0.03); margin-bottom: 30px; }
+                .user-profile-badge {
+            background: white; padding: 6px 6px 6px 18px; border-radius: 40px;
+            display: flex; align-items: center; box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+        .user-name { font-weight: 800; color: var(--deep-blue); font-size: 0.95rem; margin-right: 15px; }
+        .user-avatar { 
+            width: 40px; height: 40px; background: linear-gradient(135deg, var(--primary-blue), #4facfe);
+            color: white; border-radius: 50%; display: flex; align-items: center; 
+            justify-content: center; font-weight: 900;
+        }
+
+        .header-title { color: var(--deep-blue); font-weight: 900; font-size: 2.6rem; letter-spacing: -1.5px; }
+        .header-subtitle { color: #718096; font-weight: 600; font-size: 1.1rem; }
+
+        .badge-general { background: #f1f3f5; color: #495057; padding: 4px 12px; border-radius: 20px; font-size: 0.7rem; font-weight: 700; }
+        .filter-bar { background: white; padding: 12px 25px; border-radius: 15px; display: inline-flex; align-items: center; gap: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); border: 1px solid #eee; margin-bottom: 30px; }
+        .filter-bar input { border: none; font-weight: 600; outline: none; }
+        .btn-filter { background: var(--primary-blue); color: white; border: none; padding: 8px 20px; border-radius: 10px; font-weight: 700; }
+    </style>
+</head>
+<body>
+
+<aside class="sidebar no-print">
+    <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo" class="logo-img">
+    <a href="{{ url_for('inicio_farmacia_route') }}" class="sidebar-link" title="Inicio"><i class="fas fa-th-large"></i></a>
+    <a href="{{ url_for('punto_venta') }}" class="sidebar-link" title="Punto de Venta"><i class="fas fa-cash-register"></i></a>
+    <a href="{{ url_for('listar_productos') }}" class="sidebar-link" title="Inventario"><i class="fas fa-boxes-stacked"></i></a>
+    <a href="{{ url_for('modulo_reportes_dashboard') }}" class="sidebar-link active-link" title="Reportes"><i class="fas fa-file-waveform"></i></a>
+    <a href="{{ url_for('gestion_servicios') }}" class="sidebar-link active" title="Servicios Médicos"><i class="fas fa-stethoscope"></i></a>
+    <a href="{{ url_for('listar_usuarios') }}" class="sidebar-link" title="Usuarios"><i class="fas fa-users-cog"></i></a>
+    <a href="{{ url_for('Salir') }}" class="logout-btn" title="Cerrar Sesión"><i class="fas fa-sign-out-alt"></i></a>
+</aside>
+
+
+<main class="main-content">
+    <header class="mb-4">
+        <h1 style="font-weight: 900; color: var(--deep-blue); font-size: 2.3rem; letter-spacing: -1.5px;">Inteligencia de Clientes</h1>
+        <p class="text-muted font-weight-bold">Análisis de fidelidad (Excluyendo ventas generales en rankings)</p>
+    </header>
+
+    <form action="{{ url_for('ruta_reporte_clientes') }}" method="GET" class="filter-bar">
+        <input type="date" name="inicio" value="{{ f_inicio }}">
+        <span class="text-muted">al</span>
+        <input type="date" name="fin" value="{{ f_fin }}">
+        <button type="submit" class="btn-filter ml-2">Actualizar</button>
+    </form>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="report-card">
+                <h6 class="font-weight-bold mb-4">Top Clientes Reales (Inversión)</h6>
+                <div style="height: 300px;"><canvas id="chartClientes"></canvas></div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="report-card text-center d-flex flex-column justify-content-center" style="height: 400px; border: 2px solid var(--gold);">
+                <i class="fas fa-trophy fa-3x mb-3" style="color: var(--gold)"></i>
+                <h4 class="font-weight-bold">Mejor Comprador</h4>
+                {% if top_reales %}
+                    <h2 class="text-primary font-weight-bold mt-2">{{ top_reales[0].cliente_nombre }}</h2>
+                    <p class="text-muted">Gasto: <strong>${{ "{:,.2f}".format(top_reales[0].total_gastado) }}</strong></p>
+                    <span class="badge-vip">Líder de Fidelidad</span>
+                {% else %}
+                    <p class="text-muted">No hay clientes registrados</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="report-card mt-2">
+        <h6 class="font-weight-bold mb-4">Registro Completo de Compras</h6>
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr class="text-muted small">
+                        <th>CLIENTE</th>
+                        <th class="text-center">COMPRAS</th>
+                        <th>PRODUCTO FAVORITO</th>
+                        <th class="text-right">TOTAL GASTADO</th>
+                        <th class="text-right">ESTADO</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in tabla %}
+                    <tr {% if c.es_general %}style="background-color: #fcfcfc;"{% endif %}>
+                        <td>
+                            <div class="font-weight-bold">{{ c.cliente_nombre }}</div>
+                            <small class="text-muted">{{ c.telefono if c.telefono else 'Sin teléfono' }}</small>
+                        </td>
+                        <td class="text-center font-weight-bold">{{ c.total_compras }}</td>
+                        <td>
+                            {% if c.producto_favorito %}
+                                <span class="badge badge-light border text-primary">{{ c.producto_favorito }}</span>
+                            {% else %}
+                                <span class="text-muted small">N/A</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-right font-weight-bold" style="color: var(--deep-blue);">
+                            ${{ "{:,.2f}".format(c.total_gastado) }}
+                        </td>
+                        <td class="text-right">
+                            {% if c.es_general %}
+                                <span class="badge-general">Mostrador</span>
+                            {% elif loop.index <= 3 %}
+                                <span class="badge-vip">VIP</span>
+                            {% else %}
+                                <span class="badge badge-light">Frecuente</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</main>
+
+<script>
+    new Chart(document.getElementById('chartClientes'), {
+        type: 'bar',
+        data: {
+            labels: [{% for c in top_reales[:10] %}"{{ c.cliente_nombre }}",{% endfor %}],
+            datasets: [{
+                label: 'Gasto ($)',
+                data: [{% for c in top_reales[:10] %}{{ c.total_gastado }},{% endfor %}],
+                backgroundColor: '#1e5ba0',
+                borderRadius: 10
+            }]
+        },
+        options: {
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true } }
+        }
+    });
+</script>
+</body>
+</html>

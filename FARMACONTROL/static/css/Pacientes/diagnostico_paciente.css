@@ -1,0 +1,158 @@
+body {
+    margin: 0;
+    font-family: 'Segoe UI', sans-serif;
+    background-color: #d9d9d9;
+}
+
+.container {
+    display: flex;
+    height: 100%;
+}
+
+
+/* Barra Lateral */
+.sidebar {
+    background-color: #fafafa;
+    padding: 20px 10px;
+    width: 70px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 50px;
+}
+
+.sidebar-iconSalir {
+    width: 70px;
+    height: 75px;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.sidebar-icon:hover, .sidebar-iconLogo:hover, .sidebar-iconSalir:hover  {
+    transform: scale(1.1);
+}
+
+.logout {
+    margin-top: auto;
+}
+
+.logo-wrapper {
+    width: 55px;
+    height: 55px;
+    background-color: #d6eaff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.sidebar-iconLogo {
+    width: 80px;
+    height: 80px;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.form-container {
+    flex-grow: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.form-box {
+    width: 100%;
+    max-width: 700px;  
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+h1 {
+    font-size: 50px;  
+    color: #1565c0;
+    margin-bottom: 40px;
+    font-weight: bold;
+}
+
+form {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+label {
+    font-weight: bold;
+    margin-bottom: 10px;  
+    color: #1565c0;
+    font-size: 18px;  
+}
+
+textarea {
+    width: 100%;
+    padding: 15px;  
+    border: 2px solid #ccc;
+    border-radius: 20px;
+    font-size: 18px;  
+    margin-bottom: 20px;  
+    outline: none;
+    resize: vertical;  
+}
+
+textarea::placeholder {
+    font-style: italic;
+    color: #999;
+}
+
+.estudios {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.estudios label {
+    font-size: 18px;
+    color: #1565c0;
+}
+
+.form-buttons {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.guardar {
+    background-color: #1f80e0;
+    color: white;
+    border: none;
+    padding: 15px 40px;  
+    border-radius: 20px;
+    font-size: 20px;  
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.cancelar {
+    background-color: #e74c3c;
+    color: white;
+    text-decoration: none;
+    padding: 15px 40px;  
+    border-radius: 20px;
+    font-size: 20px;  
+    font-weight: bold;
+    box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.guardar:hover{
+    background-color: #144999;
+    transform: scale(1.1);
+}
+
+.cancelar:hover{
+    background-color: #991414;
+    transform: scale(1.1);
+}

@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Reporte Financiero | FarmaControl</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root { 
+            --primary-blue: #1e5ba0; 
+            --deep-blue: #0d3b66;
+            --bg-gray: #f0f2f5; 
+            --success-green: #2ecc71;
+        }
+        
+        body { background-color: var(--bg-gray); font-family: 'Inter', 'Segoe UI', sans-serif; margin: 0; }
+
+        .sidebar { 
+            width: 80px; height: 100vh; background: #fff; position: fixed; 
+            left: 0; top: 0; border-right: 1px solid #e1e4e8; 
+            display: flex; flex-direction: column; align-items: center; 
+            padding: 25px 0; z-index: 1100; 
+        }
+        .logo-img { width: 42px; margin-bottom: 30px; }
+        .sidebar-link { color: #adb5bd; font-size: 1.4rem; margin-bottom: 25px; transition: 0.3s; text-decoration: none; }
+        .sidebar-link:hover, .sidebar-link.active-link { color: var(--primary-blue); }
+        .logout-btn { margin-top: auto; color: #ff4757; font-size: 1.5rem; }
+
+        /* Main Layout */
+        .main-content { margin-left: 80px; padding: 40px 60px; }
+
+        /* Perfil de Usuario */
+        .user-profile-badge {
+            background: white; padding: 6px 6px 6px 18px; border-radius: 40px;
+            display: flex; align-items: center; box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+        .user-name { font-weight: 800; color: var(--deep-blue); font-size: 0.95rem; margin-right: 15px; }
+        .user-avatar { 
+            width: 40px; height: 40px; background: linear-gradient(135deg, var(--primary-blue), #4facfe);
+            color: white; border-radius: 50%; display: flex; align-items: center; 
+            justify-content: center; font-weight: 900;
+        }
+
+        .header-title { color: var(--deep-blue); font-weight: 900; font-size: 2.6rem; letter-spacing: -1.5px; }
+        .header-subtitle { color: #718096; font-weight: 600; font-size: 1.1rem; }
+
+        /* KPIs Estilo Dashboard */
+        .kpi-box {
+            background: white; border-radius: 25px; padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.02); border: 1px solid rgba(0,0,0,0.03);
+            transition: 0.3s;
+        }
+        .kpi-title { font-size: 0.8rem; font-weight: 700; color: #718096; text-transform: uppercase; letter-spacing: 1px; }
+        .kpi-value { font-size: 1.8rem; font-weight: 800; color: var(--deep-blue); margin: 10px 0; }
+
+        /* Contenedor de Reporte / Gráficas */
+        .report-card {
+            background: white; border-radius: 35px; padding: 35px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.02);
+            margin-bottom: 30px;
+        }
+
+        /* Filtros */
+        .filter-group {
+            background: white; padding: 10px 20px; border-radius: 15px;
+            display: inline-flex; align-items: center; gap: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03); border: 1px solid #eee;
+        }
+        .filter-group input { border: none; font-weight: 600; color: var(--deep-blue); outline: none; }
+
+        .btn-action {
+            background: var(--primary-blue); color: white; border: none; padding: 10px 20px; 
+            border-radius: 12px; font-weight: 700; transition: 0.3s;
+        }
+
+        /* Badges de Pago */
+        .badge-payment {
+            padding: 5px 12px; border-radius: 8px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
+        }
+        .badge-efectivo { background: #e6fffa; color: #2c7a7b; }
+        .badge-tarjeta { background: #ebf8ff; color: #2b6cb0; }
+        .badge-transferencia { background: #faf5ff; color: #6b46c1; }
+
+        /* Tabla Estilo Side-Bar */
+        .table thead th { 
+            color: var(--deep-blue); font-weight: 700; text-transform: uppercase; 
+            font-size: 0.75rem; letter-spacing: 1px; border-top: none; 
+            border-bottom: 2px solid #edf2f7; padding: 15px;
+        }
+        .table td { vertical-align: middle; padding: 15px; color: #2d3748; border-top: 1px solid #f7fafc; }
+
+        @media print {
+            .sidebar, .no-print, .btn-action, .user-profile-badge, .filter-group { display: none !important; }
+            .main-content { margin: 0 !important; padding: 20px !important; }
+            .report-card { box-shadow: none; border: 1px solid #eee; }
+        }
+    </style>
+</head>
+<body>
+
+<aside class="sidebar no-print">
+    <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo" class="logo-img">
+    <a href="{{ url_for('inicio_farmacia_route') }}" class="sidebar-link" title="Inicio"><i class="fas fa-th-large"></i></a>
+    <a href="{{ url_for('punto_venta') }}" class="sidebar-link" title="Punto de Venta"><i class="fas fa-cash-register"></i></a>
+    <a href="{{ url_for('listar_productos') }}" class="sidebar-link" title="Inventario"><i class="fas fa-boxes-stacked"></i></a>
+    <a href="{{ url_for('modulo_reportes_dashboard') }}" class="sidebar-link active-link" title="Reportes"><i class="fas fa-file-waveform"></i></a>
+    <a href="{{ url_for('gestion_servicios') }}" class="sidebar-link active" title="Servicios Médicos"><i class="fas fa-stethoscope"></i></a>
+    <a href="{{ url_for('listar_usuarios') }}" class="sidebar-link" title="Usuarios"><i class="fas fa-users-cog"></i></a>
+    <a href="{{ url_for('Salir') }}" class="logout-btn" title="Cerrar Sesión"><i class="fas fa-sign-out-alt"></i></a>
+</aside>
+
+    <main class="main-content">
+        <header class="d-flex justify-content-between align-items-center mb-5 no-print">
+            <div>
+                <h1 style="font-weight: 800; color: var(--deep-blue); font-size: 2.2rem;">Análisis Financiero</h1>
+                <p class="text-muted">Balance detallado de ingresos y utilidades</p>
+            </div>
+            
+            <div class="d-flex align-items-center">
+                <form action="" method="GET" class="filter-group mr-4">
+                    <i class="fas fa-calendar-alt text-muted"></i>
+                    <input type="date" name="inicio" value="{{ f_inicio }}">
+                    <span class="text-muted">al</span>
+                    <input type="date" name="fin" value="{{ f_fin }}">
+                    <button type="submit" class="btn-action ml-2">Actualizar</button>
+                </form>
+
+                <div class="user-profile-badge">
+                    <span class="user-name text-uppercase">{{ current_user.nombre }}</span>
+                    <div class="user-avatar">{{ current_user.nombre[0] | upper }}</div>
+                </div>
+            </div>
+        </header>
+
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="kpi-box">
+                    <div class="kpi-title">Ingresos Brutos</div>
+                    <div class="kpi-value text-primary font-weight-bold">${{ "{:,.2f}".format(ingresos) }}</div>
+                    <div class="small text-muted"><i class="fas fa-arrow-up text-success mr-1"></i> Total cobrado en caja</div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="kpi-box">
+                    <div class="kpi-title">Utilidad Estimada</div>
+                    <div class="kpi-value text-success font-weight-bold">${{ "{:,.2f}".format(ganancias) }}</div>
+                    <div class="small text-muted"><i class="fas fa-chart-line text-success mr-1"></i> Ganancia real (Venta - Costo)</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-md-8">
+                <div class="report-card">
+                    <h5 class="mb-4" style="font-weight: 700; color: var(--deep-blue);">Tendencia de Ventas</h5>
+                    <canvas id="ventasChart" height="120"></canvas>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="report-card">
+                    <h5 class="mb-4" style="font-weight: 700; color: var(--deep-blue);">Métodos de Pago</h5>
+                    <canvas id="pagosChart" height="250"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="report-card">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h5 style="font-weight: 700; color: var(--deep-blue); margin:0;">Registro de Operaciones</h5>
+                <button onclick="window.print()" class="btn-action no-print" style="background: var(--deep-blue);">
+                    <i class="fas fa-print mr-2"></i>Imprimir Reporte
+                </button>
+            </div>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Vendedor</th>
+                            <th>Cliente</th>
+                            <th>Método de Pago</th>
+                            <th class="text-right">Monto</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in tabla %}
+                        <tr>
+                            <td class="text-muted small">{{ r.fecha }}</td>
+                            <td style="font-weight: 600;">{{ r.vendedor }}</td>
+                            <td>{{ r.cliente }}</td>
+                            <td>
+                                <span class="badge-payment 
+                                    {% if r.metodo|lower == 'efectivo' %}badge-efectivo
+                                    {% elif r.metodo|lower == 'tarjeta' %}badge-tarjeta
+                                    {% else %}badge-transferencia{% endif %}">
+                                    <i class="fas fa-circle fa-xs mr-1"></i> {{ r.metodo }}
+                                </span>
+                            </td>
+                            <td class="text-right font-weight-bold" style="color: var(--primary-blue);">
+                                ${{ "{:,.2f}".format(r.total) }}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Gráfica de Ventas Diarias
+        new Chart(document.getElementById('ventasChart'), {
+            type: 'line',
+            data: {
+                labels: [{% for d in v_diaria %}"{{ d.dia }}",{% endfor %}],
+                datasets: [{
+                    label: 'Ventas ($)',
+                    data: [{% for d in v_diaria %}{{ d.total_dia }},{% endfor %}],
+                    borderColor: '#1e5ba0',
+                    backgroundColor: 'rgba(30, 91, 160, 0.05)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#fff'
+                }]
+            },
+            options: {
+                plugins: { legend: { display: false } },
+                scales: { 
+                    y: { beginAtZero: true, grid: { color: '#f0f2f5' } },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+
+        // Gráfica de Métodos de Pago
+        new Chart(document.getElementById('pagosChart'), {
+            type: 'doughnut',
+            data: {
+                labels: [{% for m in metodos %}"{{ m.metodo }}",{% endfor %}],
+                datasets: [{
+                    data: [{% for m in metodos %}{{ m.cantidad }},{% endfor %}],
+                    backgroundColor: ['#1e5ba0', '#2ecc71', '#f39c12', '#e74c3c'],
+                    hoverOffset: 12,
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                plugins: { 
+                    legend: { position: 'bottom', labels: { padding: 20, usePointStyle: true } } 
+                },
+                cutout: '70%'
+            }
+        });
+    </script>
+</body>
+</html>

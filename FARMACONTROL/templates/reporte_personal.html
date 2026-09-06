@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics Personal | FarmaControl</title>
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        :root { 
+            --primary-blue: #1e5ba0; 
+            --deep-blue: #0d3b66;
+            --bg-gray: #f0f2f5; 
+        }
+        
+        body { background-color: var(--bg-gray); font-family: 'Inter', 'Segoe UI', sans-serif; margin: 0; }
+
+        /* Sidebar Navigation (Exacto a Referencia) */
+        .sidebar { 
+            width: 80px; height: 100vh; background: #fff; position: fixed; 
+            left: 0; top: 0; border-right: 1px solid #e1e4e8; 
+            display: flex; flex-direction: column; align-items: center; 
+            padding: 25px 0; z-index: 1100; 
+        }
+        .logo-img { width: 42px; margin-bottom: 30px; }
+        .sidebar-link { color: #adb5bd; font-size: 1.4rem; margin-bottom: 25px; transition: 0.3s; text-decoration: none; }
+        .sidebar-link:hover, .sidebar-link.active-link { color: var(--primary-blue); }
+        .logout-btn { margin-top: auto; color: #ff4757; font-size: 1.5rem; }
+
+        /* Contenido Principal */
+        .main-content { margin-left: 80px; padding: 40px 60px; }
+
+        /* Estilo Glass Card y Report Cards */
+        .glass-card {
+            background: white; border-radius: 24px; overflow: hidden;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.02);
+            padding: 30px; margin-bottom: 30px;
+        }
+        .user-profile-badge {
+            background: white; padding: 6px 6px 6px 18px; border-radius: 40px;
+            display: flex; align-items: center; box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+        .user-name { font-weight: 800; color: var(--deep-blue); font-size: 0.95rem; margin-right: 15px; }
+        .user-avatar { 
+            width: 40px; height: 40px; background: linear-gradient(135deg, var(--primary-blue), #4facfe);
+            color: white; border-radius: 50%; display: flex; align-items: center; 
+            justify-content: center; font-weight: 900;
+        }
+
+        .header-title { color: var(--deep-blue); font-weight: 900; font-size: 2.6rem; letter-spacing: -1.5px; }
+        .header-subtitle { color: #718096; font-weight: 600; font-size: 1.1rem; }
+
+
+        .filter-group {
+            background: white; padding: 10px 20px; border-radius: 15px;
+            display: inline-flex; align-items: center; gap: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.03); border: 1px solid #eee;
+        }
+        .filter-group input { border: none; font-weight: 600; outline: none; background: transparent; }
+
+        .btn-action {
+            background: var(--primary-blue); color: white; border: none; padding: 10px 20px; 
+            border-radius: 12px; font-weight: 700; transition: 0.3s;
+        }
+        .btn-action:hover { background: var(--deep-blue); color: white; }
+
+        .badge-top { background: #fff4e6; color: #d97706; padding: 5px 12px; border-radius: 10px; font-weight: 700; font-size: 0.75rem; }
+
+        /* Tablas */
+        .table thead th { background: #f8fafc; color: #718096; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; border: none; }
+        
+        /* Reglas de Impresión */
+        @media print {
+            .sidebar, .no-print, .btn-action, .user-profile-badge { display: none !important; }
+            .main-content { margin: 0 !important; padding: 0 !important; width: 100% !important; }
+            body { background: white !important; }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar { display: none; }
+            .main-content { margin-left: 0; padding: 20px; }
+        }
+    </style>
+</head>
+<body>
+
+<aside class="sidebar no-print">
+    <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo" class="logo-img">
+    <a href="{{ url_for('inicio_farmacia_route') }}" class="sidebar-link" title="Inicio"><i class="fas fa-th-large"></i></a>
+    <a href="{{ url_for('punto_venta') }}" class="sidebar-link" title="Punto de Venta"><i class="fas fa-cash-register"></i></a>
+    <a href="{{ url_for('listar_productos') }}" class="sidebar-link" title="Inventario"><i class="fas fa-boxes-stacked"></i></a>
+    <a href="{{ url_for('modulo_reportes_dashboard') }}" class="sidebar-link active-link" title="Reportes"><i class="fas fa-file-waveform"></i></a>
+    <a href="{{ url_for('gestion_servicios') }}" class="sidebar-link active" title="Servicios Médicos"><i class="fas fa-stethoscope"></i></a>
+    <a href="{{ url_for('listar_usuarios') }}" class="sidebar-link" title="Usuarios"><i class="fas fa-users-cog"></i></a>
+    <a href="{{ url_for('Salir') }}" class="logout-btn" title="Cerrar Sesión"><i class="fas fa-sign-out-alt"></i></a>
+</aside>
+
+<main class="main-content">
+    <header class="d-flex justify-content-between align-items-center mb-5 no-print">
+        <div>
+            <h1 style="font-weight: 900; color: var(--deep-blue); letter-spacing: -1.5px; font-size: 2.2rem;">Rendimiento Personal</h1>
+            <p class="text-muted font-weight-bold">Comparativa de ventas y productos estrella por usuario</p>
+        </div>
+        
+        <div class="d-flex align-items-center">
+            <form action="{{ url_for('ruta_reporte_usuarios') }}" method="GET" class="filter-group mr-4">
+                <input type="date" name="inicio" value="{{ f_inicio }}">
+                <span class="text-muted font-weight-bold">al</span>
+                <input type="date" name="fin" value="{{ f_fin }}">
+                <button type="submit" class="btn-action ml-2">Actualizar</button>
+            </form>
+            
+            <div class="user-profile-badge">
+                <span class="font-weight-bold mr-2 text-dark">{{ current_user.nombre }}</span>
+                <div style="width:35px; height:35px; background:var(--primary-blue); color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight: 900;">
+                    {{ current_user.nombre[0] | upper }}
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="glass-card">
+                <h5 class="font-weight-bold mb-4" style="color: var(--deep-blue);">Ingresos Totales por Vendedor ($)</h5>
+                <canvas id="ventasChart" height="100"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="glass-card">
+        <h5 class="font-weight-bold mb-4" style="color: var(--deep-blue);">Ranking de Ventas Individuales</h5>
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>VENDEDOR</th>
+                        <th class="text-center">TICKETS</th>
+                        <th>PRODUCTO MÁS VENDIDO</th>
+                        <th class="text-right">TOTAL INGRESADO</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in tabla %}
+                    <tr>
+                        <td>
+                            <div class="font-weight-bold" style="color: var(--deep-blue); font-size: 1.1rem;">{{ r.nombre }}</div>
+                            <small class="text-muted">ID Usuario: {{ r.id_usuario }}</small>
+                        </td>
+                        <td class="text-center">
+                            <span class="badge badge-light border px-3 py-2" style="font-size: 0.9rem; border-radius: 8px;">{{ r.num_ventas }}</span>
+                        </td>
+                        <td>
+                            {% if r.producto_top %}
+                            <span class="badge-top"><i class="fas fa-fire mr-1"></i> {{ r.producto_top }}</span>
+                            {% else %}
+                            <span class="text-muted small">Sin ventas registradas</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-right font-weight-bold" style="font-size: 1.2rem; color: var(--primary-blue);">
+                            ${{ "{:,.2f}".format(r.total_vendido) }}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" class="text-center py-5 text-muted font-weight-bold">
+                            No se encontraron datos en el rango de fechas seleccionado.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</main>
+
+<script>
+    // Inicialización del gráfico con los estilos de la marca
+    const ctx = document.getElementById('ventasChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: [{% for r in tabla %}"{{ r.nombre }}",{% endfor %}],
+            datasets: [{
+                label: 'Total Vendido ($)',
+                data: [{% for r in tabla %}{{ r.total_vendido }},{% endfor %}],
+                backgroundColor: '#1e5ba0',
+                hoverBackgroundColor: '#0d3b66',
+                borderRadius: 12,
+                borderSkipped: false,
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: { display: true, color: '#f0f0f0' },
+                    ticks: {
+                        callback: function(value) { return '$' + value.toLocaleString(); }
+                    }
+                },
+                x: {
+                    grid: { display: false }
+                }
+            }
+        }
+    });
+</script>
+
+</body>
+</html>

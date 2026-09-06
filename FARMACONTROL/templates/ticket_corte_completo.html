@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Ticket Corte #{{ datos.corte_id }}</title>
+    <style>
+        @media print {
+            @page { 
+                margin: 0; 
+                size: 80mm 297mm; /* Tamaño ticket */
+            }
+            body { 
+                margin: 5mm; 
+                font-family: 'Courier New', monospace; 
+                font-size: 12px;
+            }
+            .no-print { display: none; }
+        }
+        
+        body {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-width: 80mm;
+            margin: 0 auto;
+            padding: 10px;
+            line-height: 1.4;
+        }
+        
+        .header {
+            text-align: center;
+            border-bottom: 2px dashed #000;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .logo {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .subtitle {
+            font-size: 10px;
+            opacity: 0.8;
+            margin-bottom: 10px;
+        }
+        
+        .info-section {
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px dashed #ccc;
+        }
+        
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 3px;
+        }
+        
+        .label {
+            font-weight: bold;
+        }
+        
+        .value {
+            text-align: right;
+        }
+        
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+        }
+        
+        .table th {
+            border-bottom: 1px solid #000;
+            padding: 5px 2px;
+            text-align: left;
+            font-size: 10px;
+        }
+        
+        .table td {
+            padding: 3px 2px;
+            border-bottom: 1px dotted #ccc;
+        }
+        
+        .table .right {
+            text-align: right;
+        }
+        
+        .total-row {
+            font-weight: bold;
+            border-top: 2px solid #000;
+            padding-top: 5px;
+            margin-top: 10px;
+        }
+        
+        .signature {
+            margin-top: 30px;
+            text-align: center;
+            border-top: 1px solid #000;
+            padding-top: 10px;
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 9px;
+            opacity: 0.7;
+        }
+        
+        .separator {
+            text-align: center;
+            margin: 10px 0;
+            border-top: 1px dashed #ccc;
+            padding-top: 10px;
+        }
+        
+        .print-btn {
+            background: #1e5ba0;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 20px auto;
+            display: block;
+        }
+        
+        .antibiotico {
+            font-size: 10px;
+            color: #e74c3c;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <!-- Botón de impresión (solo se muestra en navegador) -->
+    <div class="no-print" style="text-align: center; margin-bottom: 20px;">
+        <button class="print-btn" onclick="window.print()">
+            <i class="fas fa-print"></i> IMPRIMIR TICKET
+        </button>
+        <button class="print-btn" onclick="window.close()" style="background: #718096;">
+            <i class="fas fa-times"></i> CERRAR
+        </button>
+    </div>
+    
+    <!-- Contenido del ticket -->
+    <div class="header">
+        <div class="logo">FARMACONTROL</div>
+        <div class="subtitle">Sistema de Gestión Farmacéutica</div>
+        <div style="font-weight: bold; font-size: 14px;">CORTE DE CAJA #{{ datos.corte_id }}</div>
+        <div style="font-size: 10px;">{{ datos.fecha_cierre if datos.fecha_cierre != 'EN CURSO' else datos.fecha_apertura }}</div>
+    </div>
+    
+    <div class="info-section">
+        <div class="info-row">
+            <span class="label">USUARIO:</span>
+            <span class="value">{{ datos.usuario }}</span>
+        </div>
+        <div class="info-row">
+            <span class="label">APERTURA:</span>
+            <span class="value">{{ datos.fecha_apertura }}</span>
+        </div>
+        {% if datos.fecha_cierre != 'EN CURSO' %}
+        <div class="info-row">
+            <span class="label">CIERRE:</span>
+            <span class="value">{{ datos.fecha_cierre }}</span>
+        </div>
+        {% endif %}
+        <div class="info-row">
+            <span class="label">ESTADO:</span>
+            <span class="value">{{ 'CERRADO' if datos.fecha_cierre != 'EN CURSO' else 'ABIERTO' }}</span>
+        </div>
+    </div>
+    
+    <div class="info-section">
+        <div class="info-row">
+            <span class="label">FONDO INICIAL:</span>
+            <span class="value">${{ "%.2f"|format(datos.fondo_inicial) }}</span>
+        </div>
+        <div class="info-row">
+            <span class="label">VENTAS EFECTIVO:</span>
+            <span class="value">${{ "%.2f"|format(datos.ventas_efectivo) }}</span>
+        </div>
+        <div class="info-row">
+            <span class="label">VENTAS TARJETA:</span>
+            <span class="value">${{ "%.2f"|format(datos.ventas_tarjeta) }}</span>
+        </div>
+        <div class="info-row">
+            <span class="label">VENTAS TRANSF.:</span>
+            <span class="value">${{ "%.2f"|format(datos.ventas_transferencia) }}</span>
+        </div>
+    </div>
+    
+    <div class="separator">RESUMEN FINAL</div>
+    
+    <div class="info-section">
+        <div class="info-row">
+            <span class="label">TOTAL VENTAS:</span>
+            <span class="value">${{ "%.2f"|format(datos.total_ventas) }}</span>
+        </div>
+        <div class="info-row">
+            <span class="label">NÚMERO DE VENTAS:</span>
+            <span class="value">{{ datos.numero_ventas }}</span>
+        </div>
+        <div class="info-row total-row">
+            <span class="label">MONTO FINAL:</span>
+            <span class="value">${{ "%.2f"|format(datos.monto_final) }}</span>
+        </div>
+        {% if datos.fecha_cierre != 'EN CURSO' %}
+        <div class="info-row">
+            <span class="label">DIFERENCIA:</span>
+            <span class="value {% if (datos.monto_final - datos.fondo_inicial - datos.total_ventas) == 0 %}text-success{% else %}text-danger{% endif %}">
+                ${{ "%.2f"|format(datos.monto_final - datos.fondo_inicial - datos.total_ventas) }}
+            </span>
+        </div>
+        {% endif %}
+    </div>
+    
+    {% if datos.ventas and datos.ventas|length > 0 %}
+    <div class="separator">VENTAS REGISTRADAS</div>
+    
+    <table class="table">
+        <thead>
+            <tr>
+                <th>FOLIO</th>
+                <th class="right">TOTAL</th>
+                <th>MÉTODO</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for venta in datos.ventas %}
+            <tr>
+                <td>{{ venta.folio }}</td>
+                <td class="right">${{ "%.2f"|format(venta.total) }}</td>
+                <td>{{ venta.metodo_pago[:3] }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+    
+    {% if datos.top_productos and datos.top_productos|length > 0 %}
+    <div class="separator">PRODUCTOS MÁS VENDIDOS</div>
+    
+    <table class="table">
+        <thead>
+            <tr>
+                <th>PRODUCTO</th>
+                <th class="right">CANT</th>
+                <th class="right">TOTAL</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for producto in datos.top_productos %}
+            <tr>
+                <td>{{ producto.nombre[:20] }}{% if producto.antibiotico %} <span class="antibiotico">(A)</span>{% endif %}</td>
+                <td class="right">{{ producto.cantidad_vendida }}</td>
+                <td class="right">${{ "%.2f"|format(producto.total_venta) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <div style="text-align: center; font-size: 10px; margin-top: 5px;">
+        Total productos vendidos: {{ datos.total_productos_vendidos }}
+    </div>
+    {% endif %}
+    
+    <div class="signature">
+        <div style="margin-top: 20px;">__________________________</div>
+        <div style="font-size: 10px;">FIRMA DEL RESPONSABLE</div>
+    </div>
+    
+    <div class="footer">
+        <div>--- CORTE #{{ datos.corte_id }} ---</div>
+        <div>{{ datos.fecha_apertura }} - {{ datos.fecha_cierre if datos.fecha_cierre != 'EN CURSO' else 'En curso' }}</div>
+        <div>Impreso: {{ now().strftime('%d/%m/%Y %H:%M') }}</div>
+        {% if datos.es_reimpresion %}
+        <div style="color: #e74c3c; font-weight: bold;">*** REIMPRESIÓN ***</div>
+        {% endif %}
+    </div>
+    
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+    <script>
+        // Auto-impresión al cargar
+        window.onload = function() {
+            setTimeout(function() {
+                window.print();
+            }, 500);
+        };
+        
+        // Función para formatear fecha actual
+        function now() {
+            return new Date();
+        }
+    </script>
+</body>
+</html>

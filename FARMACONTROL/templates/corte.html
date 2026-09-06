@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if corte_abierto %}Corte de Caja Abierto{% else %}Abrir Corte de Caja{% endif %} | FarmaControl</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <style>
+        :root { 
+            --primary-blue: #1e5ba0; 
+            --deep-blue: #0d3b66;
+            --success-green: #27ae60; 
+            --warning-orange: #f39c12;
+            --bg-gray: #f4f7f6; 
+            --border-color: #e2e8f0;
+            --danger-red: #e74c3c;
+        }
+        
+        body { background-color: var(--bg-gray); font-family: 'Inter', sans-serif; margin: 0; }
+
+        /* SIDEBAR RESPONSIVA */
+        .sidebar { 
+            width: 80px; height: 100vh; background: #fff; position: fixed; 
+            left: 0; top: 0; border-right: 1px solid #e1e4e8; 
+            display: flex; flex-direction: column; align-items: center; 
+            padding: 20px 0; z-index: 1100; transition: all 0.3s ease;
+        }
+
+        /* CONTENIDO PRINCIPAL */
+        .main-content { 
+            margin-left: 80px; 
+            padding: 30px; 
+            transition: all 0.3s ease;
+            min-height: 100vh;
+        }
+
+        /* ADAPTACIÓN PARA MÓVILES (PANTALLAS < 768px) */
+        @media (max-width: 768px) {
+            .sidebar { 
+                width: 100%; height: 60px; flex-direction: row; 
+                bottom: 0; top: auto; border-right: none; border-top: 1px solid #ddd;
+                padding: 0 20px; justify-content: space-around;
+            }
+            .sidebar .logo-img { display: none; }
+            .sidebar-link { margin-bottom: 0 !important; }
+            .logout-btn { margin-top: 0 !important; }
+            
+            .main-content { 
+                margin-left: 0; 
+                padding: 15px 15px 80px 15px;
+            }
+            
+            .user-profile-badge {
+                position: static !important;
+                margin-bottom: 20px;
+                justify-content: center;
+            }
+        }
+
+        /* ESTILOS DE COMPONENTES */
+        .sidebar-link { color: #adb5bd; font-size: 1.4rem; margin-bottom: 25px; transition: 0.3s; text-decoration: none; }
+        .sidebar-link:hover, .sidebar-link.active { color: var(--primary-blue); }
+        .logout-btn { margin-top: auto; color: #ff4757; font-size: 1.5rem; }
+
+        .user-profile-badge {
+            background: white; padding: 8px 15px; border-radius: 40px;
+            display: flex; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            position: absolute; right: 30px; top: 20px; border: 1px solid #eee;
+        }
+
+        .corte-card { 
+            background: #fff; border-radius: 15px; padding: 30px; 
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08); 
+            border: 1px solid var(--border-color); margin-bottom: 25px;
+        }
+
+        .status-badge {
+            padding: 8px 20px; border-radius: 25px; font-weight: 800; font-size: 0.9rem;
+            display: inline-block; margin-bottom: 20px;
+        }
+        
+        .status-open { background: rgba(39, 174, 96, 0.1); color: var(--success-green); }
+        .status-closed { background: rgba(231, 76, 60, 0.1); color: var(--danger-red); }
+
+        .kpi-box { 
+            text-align: center; padding: 20px; border-radius: 12px; 
+            background: #fff; border: 1px solid #edf2f7; margin-bottom: 15px;
+        }
+        
+        .kpi-label { font-size: 0.7rem; font-weight: 800; color: #718096; text-transform: uppercase; display: block; }
+        .kpi-value { font-size: 1.8rem; font-weight: 900; color: var(--deep-blue); line-height: 1; }
+
+        .money-display {
+            background: #f8f9fa; border: 2px dashed #dee2e6;
+            border-radius: 15px; padding: 25px; text-align: center;
+        }
+        
+        .money-value { 
+            font-size: 3rem; font-weight: 900; 
+            color: var(--primary-blue); line-height: 1;
+        }
+        
+        .money-label { 
+            font-size: 0.9rem; color: #6c757d; 
+            font-weight: 600; margin-top: 10px;
+        }
+
+        .form-control-custom {
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            padding: 15px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        
+        .form-control-custom:focus {
+            border-color: var(--primary-blue);
+            box-shadow: 0 0 0 0.2rem rgba(30, 91, 160, 0.25);
+        }
+
+        .btn-corte {
+            padding: 15px 30px;
+            border-radius: 12px;
+            font-weight: 800;
+            font-size: 1.1rem;
+            border: none;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .btn-abrir {
+            background: var(--success-green);
+            color: white;
+        }
+        
+        .btn-abrir:hover {
+            background: #219653;
+            color: white;
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(39, 174, 96, 0.3);
+        }
+        
+        .btn-cerrar {
+            background: var(--danger-red);
+            color: white;
+        }
+        
+        .btn-cerrar:hover {
+            background: #c0392b;
+            color: white;
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(231, 76, 60, 0.3);
+        }
+
+        .detalle-ventas {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #e9ecef;
+            border-radius: 10px;
+            padding: 0;
+        }
+        
+        .detalle-item {
+            padding: 15px 20px;
+            border-bottom: 1px solid #e9ecef;
+            transition: background 0.2s;
+        }
+        
+        .detalle-item:hover {
+            background: #f8f9fa;
+        }
+        
+        .detalle-item:last-child {
+            border-bottom: none;
+        }
+
+        .historial-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border: 1px solid #e9ecef;
+            transition: all 0.3s;
+        }
+        
+        .historial-card:hover {
+            border-color: var(--primary-blue);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        }
+        
+        .warning-alert {
+            background: rgba(243, 156, 18, 0.1);
+            border: 1px solid rgba(243, 156, 18, 0.3);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 25px;
+        }
+
+        @media print {
+            .sidebar, .no-print, .user-profile-badge, .btn-cerrar { 
+                display: none !important; 
+            }
+            .main-content { 
+                margin: 0 !important; 
+                padding: 0 !important; 
+            }
+            .corte-card { 
+                border: none !important; 
+                box-shadow: none !important; 
+                padding: 20px !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="sidebar">
+    <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo" class="logo-img" style="width: 35px; margin-bottom: 30px;">
+    <a href="{{ url_for('index') }}" class="sidebar-link" title="Inicio"><i class="fas fa-home"></i></a>
+    {% if current_user.rol == 2 %}
+    <a href="{{ url_for('punto_farmacia') }}" class="sidebar-link" title="Punto de Venta"><i class="fas fa-cash-register"></i></a>
+    {% endif %}
+    <a href="{{ url_for('corte_caja') }}" class="sidebar-link active" title="Corte de Caja"><i class="fas fa-calculator"></i></a>
+    <a href="{{ url_for('Salir') }}" class="logout-btn" title="Salir"><i class="fas fa-power-off"></i></a>
+</nav>
+
+<main class="main-content">
+    <div class="user-profile-badge">
+        <span class="small font-weight-bold text-muted mr-2">{{ current_user.nombre }}</span>
+        <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 30px; height: 30px; font-size: 0.8rem;">
+            {{ current_user.nombre[0] | upper }}
+        </div>
+    </div>
+
+    <header class="mb-4 pt-2">
+        <h2 class="font-weight-bold mb-0">
+            {% if corte_abierto %}
+                <i class="fas fa-cash-register text-success mr-2"></i>Corte de Caja Abierto
+            {% else %}
+                <i class="fas fa-calculator text-primary mr-2"></i>Corte de Caja
+            {% endif %}
+        </h2>
+        <p class="text-muted">
+            {% if corte_abierto %}
+                Gestión de efectivo y cierre de operaciones diarias
+            {% else %}
+                Inicia un nuevo corte de caja o revisa el historial
+            {% endif %}
+        </p>
+    </header>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show mb-4" style="border-radius: 12px;">
+                    <i class="fas fa-{% if category == 'success' %}check-circle{% elif category == 'danger' %}exclamation-circle{% else %}info-circle{% endif %} mr-2"></i> 
+                    {{ message }}
+                    <button type="button" class="close" data-dismiss="alert">&times;</button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    {% if corte_abierto %}
+    <!-- VISTA DE CORTE ABIERTO -->
+    <div class="corte-card">
+        <div class="status-badge status-open">
+            <i class="fas fa-unlock mr-2"></i>CORTE ABIERTO
+        </div>
+        
+        <div class="row mb-4">
+            <div class="col-md-8">
+                <h4 class="font-weight-bold mb-3">Resumen del Corte Actual</h4>
+                <div class="row">
+                    <div class="col-6 col-md-3">
+                        <div class="kpi-box">
+                            <span class="kpi-label">Fondo Inicial</span>
+                            <span class="kpi-value">${{ "{:,.2f}".format(datos.fondo_inicial) }}</span>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="kpi-box">
+                            <span class="kpi-label">Ventas Efectivo</span>
+                            <span class="kpi-value text-success">${{ "{:,.2f}".format(datos.ventas_efectivo) }}</span>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="kpi-box">
+                            <span class="kpi-label">Ventas Tarjeta</span>
+                            <span class="kpi-value text-info">${{ "{:,.2f}".format(datos.ventas_tarjeta) }}</span>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="kpi-box">
+                            <span class="kpi-label">Total Ventas</span>
+                            <span class="kpi-value">${{ "{:,.2f}".format(datos.ventas_efectivo + datos.ventas_tarjeta + datos.ventas_transferencia + datos.ventas_otros) }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="money-display">
+                    <div class="money-label">Efectivo Total en Caja</div>
+                    <div class="money-value">${{ "{:,.2f}".format(datos.fondo_inicial + datos.ventas_efectivo) }}</div>
+                    <div class="money-label">(Fondo Inicial + Efectivo de Ventas)</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detalle de Ventas -->
+        <h5 class="font-weight-bold mb-3">
+            <i class="fas fa-receipt mr-2"></i>Detalle de Ventas del Corte ({{ detalle_ventas|length }} ventas)
+        </h5>
+        
+        <div class="detalle-ventas mb-4">
+            {% if detalle_ventas %}
+                {% for venta in detalle_ventas %}
+                <div class="detalle-item">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="font-weight-bold">{{ venta.folio }}</div>
+                            <div class="small text-muted">{{ venta.fecha.strftime('%H:%M') }}</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="font-weight-bold">${{ "{:,.2f}".format(venta.total) }}</div>
+                            <div class="small">
+                                {% if venta.metodo_pago == 'Efectivo' %}
+                                    <span class="badge badge-success">{{ venta.metodo_pago }}</span>
+                                {% elif venta.metodo_pago == 'Tarjeta' %}
+                                    <span class="badge badge-info">{{ venta.metodo_pago }}</span>
+                                {% else %}
+                                    <span class="badge badge-secondary">{{ venta.metodo_pago }}</span>
+                                {% endif %}
+                                {% if venta.cliente %}
+                                    <span class="text-muted ml-2">{{ venta.cliente }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="text-center py-5 text-muted">
+                    <i class="fas fa-receipt fa-3x mb-3" style="opacity: 0.3;"></i>
+                    <p class="mb-0">No hay ventas registradas en este corte</p>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Información del Corte -->
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <div class="alert alert-light border" style="border-radius: 12px;">
+                    <h6 class="font-weight-bold mb-2"><i class="fas fa-info-circle mr-2"></i>Información del Corte</h6>
+                    <p class="mb-1"><strong>Vendedor:</strong> {{ datos.vendedor }}</p>
+                    <p class="mb-1"><strong>Apertura:</strong> {{ datos.fecha_apertura }}</p>
+                    <p class="mb-0"><strong>Corte ID:</strong> {{ datos.corte_id }}</p>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="alert alert-warning border" style="border-radius: 12px;">
+                    <h6 class="font-weight-bold mb-2"><i class="fas fa-exclamation-triangle mr-2"></i>Antes de Cerrar</h6>
+                    <p class="mb-1 small">Verifica que el efectivo físico coincida con el total del sistema.</p>
+                    <p class="mb-0 small">Una vez cerrado el corte, la sesión se cerrará automáticamente.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Botones de Acción -->
+        <div class="d-flex flex-column flex-md-row mt-4 no-print">
+            <form method="POST" action="{{ url_for('cerrar_caja') }}" class="w-100" id="form-cerrar-caja">
+                <button type="submit" class="btn-cerrar btn-corte w-100 mb-2 mb-md-0" onclick="return confirm('¿Estás seguro de cerrar la caja? La sesión se cerrará automáticamente.')">
+                    <i class="fas fa-lock"></i> CERRAR CAJA Y SALIR
+                </button>
+            </form>
+            
+            <button onclick="window.print()" class="btn btn-dark btn-lg font-weight-bold px-4 ml-md-3">
+                <i class="fas fa-print mr-2"></i>Imprimir Preliminar
+            </button>
+        </div>
+    </div>
+
+    {% else %}
+    <!-- VISTA SIN CORTE ABIERTO -->
+    <div class="corte-card">
+        <div class="status-badge status-closed">
+            <i class="fas fa-lock mr-2"></i>SIN CORTE ABIERTO
+        </div>
+        
+        <div class="warning-alert">
+            <div class="d-flex align-items-center">
+                <i class="fas fa-exclamation-circle fa-2x mr-3 text-warning"></i>
+                <div>
+                    <h5 class="font-weight-bold mb-1">¡Atención!</h5>
+                    <p class="mb-0">No tienes un corte de caja abierto. Para comenzar a operar, debes abrir un nuevo corte con el fondo inicial.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Formulario para Abrir Caja -->
+        <h4 class="font-weight-bold mb-3">Abrir Nuevo Corte de Caja</h4>
+        
+        <form method="POST" action="{{ url_for('abrir_caja') }}">
+            <div class="row">
+                <div class="col-md-6 mb-4">
+                    <div class="money-display">
+                        <div class="money-label">Fondo Inicial Sugerido</div>
+                        <div class="money-value">$500.00</div>
+                        <div class="money-label">(Recomendado para cambio)</div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6 mb-4">
+                    <label class="font-weight-bold mb-2">Monto Inicial en Efectivo</label>
+                    <div class="input-group">
+                        <div class="input-group-prepend">
+                            <span class="input-group-text bg-light font-weight-bold">$</span>
+                        </div>
+                        <input type="number" 
+                               name="monto_inicial" 
+                               class="form-control-custom form-control" 
+                               step="0.01" 
+                               min="0" 
+                               value="500.00" 
+                               required
+                               style="font-size: 1.5rem; font-weight: 800;">
+                    </div>
+                    <small class="text-muted mt-2 d-block">Ingresa la cantidad de efectivo con la que inicias el turno.</small>
+                </div>
+            </div>
+            
+            <button type="submit" class="btn-abrir btn-corte w-100">
+                <i class="fas fa-unlock-alt mr-2"></i> ABRIR CAJA E INICIAR TURNO
+            </button>
+        </form>
+    </div>
+
+    <!-- Historial de Cortes -->
+    {% if historial %}
+    <div class="corte-card">
+        <h4 class="font-weight-bold mb-3">
+            <i class="fas fa-history mr-2"></i>Historial de Cortes Recientes
+        </h4>
+        
+        {% for corte in historial %}
+        <div class="historial-card">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <h6 class="font-weight-bold mb-1">Corte #{{ corte.id }}</h6>
+                    <p class="small text-muted mb-1">
+                        <i class="far fa-calendar mr-1"></i> 
+                        {{ corte.fecha_apertura.strftime('%d/%m/%Y') }} 
+                        de {{ corte.fecha_apertura.strftime('%H:%M') }} a 
+                        {% if corte.fecha_cierre %}{{ corte.fecha_cierre.strftime('%H:%M') }}{% else %}--:--{% endif %}
+                    </p>
+                </div>
+                <div class="text-right">
+                    <div class="font-weight-bold text-success">${{ "{:,.2f}".format(corte.monto_final) }}</div>
+                    <div class="small text-muted">Monto Final</div>
+                </div>
+            </div>
+            <div class="row mt-2">
+                <div class="col-6">
+                    <div class="small">
+                        <span class="text-muted">Inicial:</span>
+                        <span class="font-weight-bold">${{ "{:,.2f}".format(corte.monto_inicial) }}</span>
+                    </div>
+                </div>
+                <div class="col-6 text-right">
+                    <span class="badge badge-secondary">Cerrado</span>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+        
+        {% if historial|length == 10 %}
+        <div class="text-center mt-3">
+            <a href="#" class="text-primary font-weight-bold">
+                <i class="fas fa-arrow-down mr-2"></i>Ver más cortes anteriores
+            </a>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+    
+    {% endif %}
+
+    <!-- Información de Ayuda -->
+    <div class="corte-card mt-4">
+        <h5 class="font-weight-bold mb-3"><i class="fas fa-question-circle mr-2"></i>¿Cómo funciona el corte de caja?</h5>
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <div class="d-flex align-items-start">
+                    <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center mr-3" style="width: 40px; height: 40px;">
+                        1
+                    </div>
+                    <div>
+                        <h6 class="font-weight-bold mb-1">Abrir Caja</h6>
+                        <p class="small text-muted mb-0">Ingresa el fondo inicial con el que comienzas el turno.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="d-flex align-items-start">
+                    <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center mr-3" style="width: 40px; height: 40px;">
+                        2
+                    </div>
+                    <div>
+                        <h6 class="font-weight-bold mb-1">Operar</h6>
+                        <p class="small text-muted mb-0">Realiza ventas normales, el sistema registra todo automáticamente.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-3">
+                <div class="d-flex align-items-start">
+                    <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center mr-3" style="width: 40px; height: 40px;">
+                        3
+                    </div>
+                    <div>
+                        <h6 class="font-weight-bold mb-1">Cerrar Caja</h6>
+                        <p class="small text-muted mb-0">Verifica los totales y cierra para finalizar el turno.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    $(document).ready(function() {
+        // Confirmación para cerrar caja
+        $('#form-cerrar-caja').on('submit', function(e) {
+            if (!confirm('¿Estás seguro de cerrar la caja?\n\nEsta acción: \n1. Registrará el corte final\n2. Generará el ticket de cierre\n3. Cerrará tu sesión automáticamente\n\n¿Deseas continuar?')) {
+                e.preventDefault();
+                return false;
+            }
+        });
+        
+        // Auto-foco en el input de monto inicial
+        $('input[name="monto_inicial"]').focus().select();
+        
+        // Formatear números con separadores de miles
+        $('.money-value, .kpi-value').each(function() {
+            var text = $(this).text();
+            if (text.includes('$')) {
+                var num = parseFloat(text.replace('$', '').replace(/,/g, ''));
+                if (!isNaN(num)) {
+                    $(this).text('$' + num.toLocaleString('es-MX', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
+                }
+            }
+        });
+    });
+    
+    // Deshabilitar F5 y Ctrl+R para evitar cierre accidental
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'F5' || (e.ctrlKey && e.key === 'r')) {
+            if ({{ 'true' if corte_abierto else 'false' }}) {
+                e.preventDefault();
+                alert('El corte de caja está abierto. Usa el botón "CERRAR CAJA" para finalizar el turno.');
+            }
+        }
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Imprimir Cortes de Caja | FarmaControl</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.10.24/css/dataTables.bootstrap4.min.css">
+    <style>
+        :root { 
+            --primary-blue: #1e5ba0; 
+            --deep-blue: #0d3b66;
+            --success-green: #2ecc71;
+            --bg-gray: #f0f2f5; 
+            --danger-red: #ff4757;
+        }
+        
+        body { background-color: var(--bg-gray); font-family: 'Inter', 'Segoe UI', sans-serif; margin: 0; }
+
+        /* Sidebar Pro */
+        .sidebar { 
+            width: 80px; height: 100vh; background: #fff; position: fixed; 
+            left: 0; top: 0; border-right: 1px solid #e1e4e8; 
+            display: flex; flex-direction: column; align-items: center; 
+            padding: 25px 0; z-index: 1100; 
+        }
+        .logo-img { width: 42px; margin-bottom: 30px; }
+        .sidebar-link { color: #adb5bd; font-size: 1.4rem; margin-bottom: 25px; transition: 0.3s; }
+        .sidebar-link:hover, .sidebar-link.active { color: var(--primary-blue); }
+        .logout-btn { margin-top: auto; color: #ff4757; font-size: 1.5rem; }
+
+        /* Main Layout */
+        .main-content { margin-left: 80px; padding: 40px 60px; }
+
+        /* Perfil de Usuario Premium */
+        .user-profile-badge {
+            background: white; padding: 6px 6px 6px 18px; border-radius: 40px;
+            display: flex; align-items: center; box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+        .user-name { font-weight: 800; color: var(--deep-blue); font-size: 0.95rem; margin-right: 15px; }
+        .user-avatar { 
+            width: 40px; height: 40px; background: linear-gradient(135deg, var(--primary-blue), #4facfe);
+            color: white; border-radius: 50%; display: flex; align-items: center; 
+            justify-content: center; font-weight: 900;
+        }
+
+        .header-title { color: var(--deep-blue); font-weight: 900; font-size: 2.6rem; letter-spacing: -1.5px; }
+        .header-subtitle { color: #718096; font-weight: 600; font-size: 1.1rem; }
+
+        /* Filtros Styled */
+        .filter-card {
+            background: white; border-radius: 20px; padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05); border: 1px solid rgba(0,0,0,0.03);
+            margin-bottom: 30px;
+        }
+        .filter-title {
+            font-size: 1.4rem; font-weight: 900; color: var(--deep-blue); 
+            margin-bottom: 25px; padding-bottom: 15px; border-bottom: 2px solid #f0f2f5;
+        }
+        .form-control-custom {
+            border-radius: 15px; padding: 15px 20px; border: 2px solid #e9ecef;
+            transition: 0.3s; font-weight: 600;
+        }
+        .form-control-custom:focus {
+            border-color: var(--primary-blue); box-shadow: 0 0 0 0.2rem rgba(30, 91, 160, 0.25);
+        }
+        .btn-search {
+            background: var(--primary-blue); color: white; border-radius: 15px;
+            padding: 15px 30px; font-weight: 900; border: none;
+            transition: 0.3s; width: 100%;
+        }
+        .btn-search:hover {
+            background: var(--deep-blue); transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(30, 91, 160, 0.3);
+        }
+        .btn-reset {
+            background: #f8f9fa; color: #718096; border-radius: 15px;
+            padding: 15px 30px; font-weight: 900; border: 2px solid #e9ecef;
+            transition: 0.3s; width: 100%;
+        }
+        .btn-reset:hover {
+            background: #e9ecef; color: var(--deep-blue);
+        }
+
+        /* Tabla Mejorada */
+        .table-container {
+            background: white; border-radius: 20px; padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05); border: 1px solid rgba(0,0,0,0.03);
+        }
+        .table-title {
+            font-size: 1.4rem; font-weight: 900; color: var(--deep-blue); 
+            margin-bottom: 25px;
+        }
+        .table-custom {
+            border-collapse: separate; border-spacing: 0; width: 100%;
+            border-radius: 15px; overflow: hidden;
+        }
+        .table-custom thead th {
+            background: #f8f9fa; color: var(--deep-blue); font-weight: 900;
+            border: none; padding: 20px; text-transform: uppercase;
+            font-size: 0.85rem; letter-spacing: 0.5px;
+        }
+        .table-custom tbody td {
+            padding: 20px; border-bottom: 1px solid #f0f2f5;
+            font-weight: 600; vertical-align: middle;
+        }
+        .table-custom tbody tr:hover {
+            background-color: #f8fafc;
+        }
+        .badge-status {
+            padding: 8px 15px; border-radius: 10px; font-weight: 900;
+            font-size: 0.8rem; text-transform: uppercase;
+        }
+        .badge-closed {
+            background: rgba(46, 204, 113, 0.1); color: var(--success-green);
+        }
+        .badge-open {
+            background: rgba(255, 71, 87, 0.1); color: var(--danger-red);
+        }
+        .btn-action {
+            padding: 8px 15px; border-radius: 10px; font-weight: 900;
+            font-size: 0.85rem; transition: 0.3s; border: none;
+        }
+        .btn-print {
+            background: rgba(30, 91, 160, 0.1); color: var(--primary-blue);
+        }
+        .btn-print:hover {
+            background: var(--primary-blue); color: white;
+        }
+        .btn-detail {
+            background: rgba(46, 204, 113, 0.1); color: var(--success-green);
+        }
+        .btn-detail:hover {
+            background: var(--success-green); color: white;
+        }
+
+        /* Estadísticas */
+        .stats-summary {
+            display: flex; justify-content: space-between; align-items: center;
+            background: linear-gradient(135deg, var(--primary-blue), #4facfe);
+            color: white; border-radius: 20px; padding: 25px;
+            margin-bottom: 30px; box-shadow: 0 10px 30px rgba(30, 91, 160, 0.2);
+        }
+        .stat-item {
+            text-align: center;
+        }
+        .stat-number {
+            font-size: 2.5rem; font-weight: 900; margin-bottom: 5px;
+        }
+        .stat-label {
+            font-size: 0.9rem; opacity: 0.9; text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Modal de Detalles */
+        .modal-details {
+            border-radius: 25px; overflow: hidden;
+        }
+        .modal-header-custom {
+            background: linear-gradient(135deg, var(--primary-blue), #4facfe);
+            color: white; border: none; padding: 30px;
+        }
+        .modal-body-custom {
+            padding: 30px;
+        }
+        .detail-item {
+            display: flex; justify-content: space-between; padding: 15px 0;
+            border-bottom: 1px solid #f0f2f5;
+        }
+        .detail-label {
+            font-weight: 700; color: #718096;
+        }
+        .detail-value {
+            font-weight: 900; color: var(--deep-blue);
+        }
+        .detail-value.total {
+            color: var(--success-green); font-size: 1.2rem;
+        }
+    </style>
+</head>
+<body>
+
+<aside class="sidebar">
+    <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo" class="logo-img">
+    <a href="{{ url_for('index') }}" class="sidebar-link" title="Inicio"><i class="fas fa-th-large"></i></a>
+    <a href="{{ url_for('punto_venta') }}" class="sidebar-link" title="Punto de Venta"><i class="fas fa-cash-register"></i></a>
+    <a href="{{ url_for('listar_productos') }}" class="sidebar-link" title="Inventario"><i class="fas fa-boxes-stacked"></i></a>
+    
+    {% if current_user.rol == 1 %}
+    <a href="{{ url_for('modulo_reportes_dashboard') }}" class="sidebar-link" title="Reportes"><i class="fas fa-file-waveform"></i></a>
+    <a href="{{ url_for('gestion_servicios') }}" class="sidebar-link" title="Servicios Médicos"><i class="fas fa-stethoscope"></i></a>
+    <a href="{{ url_for('listar_usuarios') }}" class="sidebar-link" title="Usuarios"><i class="fas fa-users-cog"></i></a>
+    {% endif %}
+    
+    <a href="{{ url_for('Salir') }}" class="logout-btn" title="Cerrar Sesión"><i class="fas fa-sign-out-alt"></i></a>
+</aside>
+
+    <main class="main-content">
+        <header class="d-flex justify-content-between align-items-center mb-5">
+            <div>
+                <h1 class="header-title">Impresión de Cortes</h1>
+                <p class="header-subtitle">Busque y reimprima cualquier corte de caja por usuario y fecha</p>
+            </div>
+            <div class="user-profile-badge">
+                <span class="user-name text-uppercase">{{ current_user.nombre }}</span>
+                <div class="user-avatar shadow">{{ current_user.nombre[0] | upper }}</div>
+            </div>
+        </header>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{ category }} alert-dismissible fade show mb-4 border-0 shadow-sm" style="border-radius: 18px; font-weight: 700;">
+                <i class="fas fa-info-circle mr-2"></i> {{ message }}
+                <button type="button" class="close" data-dismiss="alert">&times;</button>
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        <!-- Estadísticas Rápidas -->
+        <div class="stats-summary">
+            <div class="stat-item">
+                <div class="stat-number">{{ total_cortes }}</div>
+                <div class="stat-label">Cortes Encontrados</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number">${{ total_efectivo|round(2) }}</div>
+                <div class="stat-label">Total Efectivo</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number">${{ total_tarjeta|round(2) }}</div>
+                <div class="stat-label">Total Tarjeta</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number">${{ total_general|round(2) }}</div>
+                <div class="stat-label">Ventas Totales</div>
+            </div>
+        </div>
+
+        <!-- Filtros de Búsqueda -->
+        <div class="filter-card">
+            <h3 class="filter-title">
+                <i class="fas fa-filter mr-2"></i>Filtros de Búsqueda
+            </h3>
+            <form method="GET" action="{{ url_for('imprimir_cortes_turno') }}">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label class="font-weight-bold mb-2" style="color: var(--deep-blue);">Usuario</label>
+                        <select name="usuario_id" class="form-control form-control-custom">
+                            <option value="">Todos los usuarios</option>
+                            {% for usuario in usuarios %}
+                            <option value="{{ usuario.id }}" {% if usuario.id|string == usuario_id %}selected{% endif %}>
+                                {{ usuario.nombre }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="font-weight-bold mb-2" style="color: var(--deep-blue);">Fecha Inicio</label>
+                        <input type="date" name="fecha_inicio" class="form-control form-control-custom" 
+                               value="{{ fecha_inicio }}">
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="font-weight-bold mb-2" style="color: var(--deep-blue);">Fecha Fin</label>
+                        <input type="date" name="fecha_fin" class="form-control form-control-custom" 
+                               value="{{ fecha_fin }}">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="font-weight-bold mb-2" style="color: var(--deep-blue);">Estado</label>
+                        <select name="estado" class="form-control form-control-custom">
+                            <option value="">Todos los estados</option>
+                            <option value="cerrado" {% if estado == 'cerrado' %}selected{% endif %}>Cerrados</option>
+                            <option value="abierto" {% if estado == 'abierto' %}selected{% endif %}>Abiertos</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="font-weight-bold mb-2" style="color: var(--deep-blue);">Folio o ID</label>
+                        <input type="text" name="folio" class="form-control form-control-custom" 
+                               placeholder="Buscar por folio o ID" value="{{ folio }}">
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        <button type="submit" class="btn btn-search">
+                            <i class="fas fa-search mr-2"></i> BUSCAR CORTES
+                        </button>
+                    </div>
+                    <div class="col-md-6">
+                        <a href="{{ url_for('imprimir_cortes_turno') }}" class="btn btn-reset">
+                            <i class="fas fa-redo mr-2"></i> LIMPIAR FILTROS
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Tabla de Resultados -->
+        <div class="table-container">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h3 class="table-title">
+                    <i class="fas fa-list-alt mr-2"></i>Cortes Encontrados
+                </h3>
+                <span class="badge badge-primary px-3 py-2" style="font-size: 0.9rem; font-weight: 900;">
+                    {{ cortes|length }} resultados
+                </span>
+            </div>
+
+            {% if cortes %}
+            <div class="table-responsive">
+                <table class="table table-custom">
+                    <thead>
+                        <tr>
+                            <th>Folio</th>
+                            <th>Usuario</th>
+                            <th>Apertura</th>
+                            <th>Cierre</th>
+                            <th>Fondo Inicial</th>
+                            <th>Ventas Efectivo</th>
+                            <th>Ventas Tarjeta</th>
+                            <th>Total Ventas</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for corte in cortes %}
+                        <tr>
+                            <td>
+                                <strong>CORTE-{{ corte.id }}</strong>
+                                {% if current_user.id == corte.usuario_id %}
+                                <span class="badge badge-info ml-2" style="font-size: 0.7rem;">TUYO</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="user-avatar mr-2" style="width: 30px; height: 30px; font-size: 12px;">
+                                        {{ corte.usuario_nombre[0]|upper }}
+                                    </div>
+                                    {{ corte.usuario_nombre }}
+                                </div>
+                            </td>
+                            <td>{{ corte.fecha_apertura.strftime('%d/%m/%Y %H:%M') }}</td>
+                            <td>
+                                {% if corte.fecha_cierre %}
+                                {{ corte.fecha_cierre.strftime('%d/%m/%Y %H:%M') }}
+                                {% else %}
+                                <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
+                            <td class="font-weight-bold text-primary">${{ corte.monto_inicial|round(2) }}</td>
+                            <td>${{ corte.ventas_efectivo|round(2) if corte.ventas_efectivo else '0.00' }}</td>
+                            <td>${{ corte.ventas_tarjeta|round(2) if corte.ventas_tarjeta else '0.00' }}</td>
+                            <td>
+                                <strong class="text-success">${{ corte.total_ventas|round(2) if corte.total_ventas else '0.00' }}</strong>
+                            </td>
+                            <td>
+                                {% if corte.cerrado %}
+                                <span class="badge-status badge-closed">
+                                    <i class="fas fa-check-circle mr-1"></i> CERRADO
+                                </span>
+                                {% else %}
+                                <span class="badge-status badge-open">
+                                    <i class="fas fa-clock mr-1"></i> ABIERTO
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="d-flex">
+                                    {% if corte.cerrado %}
+                                    <a href="{{ url_for('reimprimir_corte_completo', corte_id=corte.id) }}" 
+                                       target="_blank"
+                                       class="btn btn-action btn-print mr-2"
+                                       title="Imprimir Corte">
+                                        <i class="fas fa-print"></i>
+                                    </a>
+                                    {% endif %}
+                                    <button type="button" 
+                                            class="btn btn-action btn-detail"
+                                            onclick="verDetalleCorte({{ corte.id }})"
+                                            title="Ver Detalles">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                <h4 class="text-muted">No se encontraron cortes</h4>
+                <p class="text-muted">Intenta con otros criterios de búsqueda</p>
+            </div>
+            {% endif %}
+        </div>
+    </main>
+
+    <!-- Modal para Detalles del Corte -->
+    <div class="modal fade" id="modalDetalleCorte" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-details">
+            <div class="modal-content" style="border-radius: 25px;">
+                <div class="modal-header modal-header-custom">
+                    <h5 class="modal-title font-weight-bold">
+                        <i class="fas fa-file-invoice-dollar mr-2"></i>
+                        Detalles del Corte
+                    </h5>
+                    <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+                </div>
+                <div class="modal-body modal-body-custom" id="modalDetalleBody">
+                    <!-- Contenido cargado dinámicamente -->
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                        <i class="fas fa-times mr-2"></i> Cerrar
+                    </button>
+                    <button type="button" class="btn btn-primary" onclick="imprimirDetalle()">
+                        <i class="fas fa-print mr-2"></i> Imprimir
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Iframe para Impresión Silenciosa -->
+    <iframe id="printFrame" style="display: none;"></iframe>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.datatables.net/1.10.24/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.10.24/js/dataTables.bootstrap4.min.js"></script>
+    <script>
+        // Inicializar DataTable
+        $(document).ready(function() {
+            $('.table-custom').DataTable({
+                "language": {
+                    "url": "//cdn.datatables.net/plug-ins/1.10.24/i18n/Spanish.json"
+                },
+                "pageLength": 10,
+                "order": [[2, 'desc']]
+            });
+        });
+
+        // Función para ver detalles del corte
+        function verDetalleCorte(corteId) {
+            $('#modalDetalleBody').html(`
+                <div class="text-center py-5">
+                    <i class="fas fa-spinner fa-spin fa-2x text-primary"></i>
+                    <p class="mt-3">Cargando detalles...</p>
+                </div>
+            `);
+            
+            $('#modalDetalleCorte').modal('show');
+            
+            $.ajax({
+                url: '/api/corte/detalle/' + corteId,
+                method: 'GET',
+                success: function(response) {
+                    if (response.success) {
+                        const corte = response.corte;
+                        const ventas = response.ventas || [];
+                        
+                        let ventasHtml = '';
+                        ventas.forEach(function(venta) {
+                            ventasHtml += `
+                                <div class="detail-item">
+                                    <div>
+                                        <strong>${venta.folio}</strong><br>
+                                        <small class="text-muted">${venta.fecha}</small>
+                                    </div>
+                                    <div class="text-right">
+                                        <div class="font-weight-bold text-success">$${venta.total}</div>
+                                        <small class="text-muted">${venta.metodo_pago}</small>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        
+                        $('#modalDetalleBody').html(`
+                            <div class="row mb-4">
+                                <div class="col-md-6">
+                                    <div class="detail-item">
+                                        <span class="detail-label">Usuario:</span>
+                                        <span class="detail-value">${corte.usuario_nombre}</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <span class="detail-label">Apertura:</span>
+                                        <span class="detail-value">${corte.fecha_apertura}</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <span class="detail-label">Cierre:</span>
+                                        <span class="detail-value">${corte.fecha_cierre || '—'}</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <span class="detail-label">Estado:</span>
+                                        <span class="detail-value ${corte.cerrado ? 'text-success' : 'text-warning'}">
+                                            ${corte.cerrado ? 'CERRADO' : 'ABIERTO'}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="detail-item">
+                                        <span class="detail-label">Fondo Inicial:</span>
+                                        <span class="detail-value">$${corte.monto_inicial}</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <span class="detail-label">Ventas Efectivo:</span>
+                                        <span class="detail-value">$${corte.ventas_efectivo || '0.00'}</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <span class="detail-label">Ventas Tarjeta:</span>
+                                        <span class="detail-value">$${corte.ventas_tarjeta || '0.00'}</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <span class="detail-label">Total Ventas:</span>
+                                        <span class="detail-value total">$${corte.total_ventas || '0.00'}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <h6 class="font-weight-bold mb-3" style="color: var(--deep-blue);">
+                                <i class="fas fa-receipt mr-2"></i>Ventas del Corte (${ventas.length})
+                            </h6>
+                            <div style="max-height: 300px; overflow-y: auto;">
+                                ${ventasHtml || '<p class="text-center text-muted py-3">No hay ventas registradas</p>'}
+                            </div>
+                        `);
+                    } else {
+                        $('#modalDetalleBody').html(`
+                            <div class="alert alert-danger">
+                                <i class="fas fa-exclamation-triangle mr-2"></i>
+                                ${response.message}
+                            </div>
+                        `);
+                    }
+                },
+                error: function() {
+                    $('#modalDetalleBody').html(`
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-triangle mr-2"></i>
+                            Error al cargar los detalles del corte
+                        </div>
+                    `);
+                }
+            });
+        }
+
+        // Función para imprimir el detalle
+        function imprimirDetalle() {
+            const printContent = $('#modalDetalleBody').html();
+            const printFrame = document.getElementById('printFrame');
+            const printDocument = printFrame.contentWindow.document;
+            
+            printDocument.open();
+            printDocument.write(`
+                <html>
+                <head>
+                    <title>Detalles del Corte</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; padding: 20px; }
+                        h4 { color: #1e5ba0; }
+                        .detail-item { display: flex; justify-content: space-between; margin-bottom: 10px; }
+                        .total { font-weight: bold; color: #2ecc71; font-size: 1.2em; }
+                        @media print {
+                            @page { margin: 0; }
+                            body { margin: 1.6cm; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <h4>Detalles del Corte de Caja</h4>
+                    ${printContent}
+                </body>
+                </html>
+            `);
+            printDocument.close();
+            
+            setTimeout(function() {
+                printFrame.contentWindow.focus();
+                printFrame.contentWindow.print();
+            }, 500);
+        }
+
+        // Auto-ocultar alertas
+        window.setTimeout(function() { 
+            $(".alert").fadeTo(500, 0).slideUp(500, function(){ 
+                $(this).remove(); 
+            }); 
+        }, 5000);
+    </script>
+</body>
+</html>
