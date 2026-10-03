@@ -1,0 +1,115 @@
+body {
+    margin: 0;
+    font-family: 'Segoe UI', sans-serif;
+    background-color: #d9d9d9;
+}
+
+.container {
+    display: flex;
+    height: 100%;
+}
+
+/* Barra lateral */
+.sidebar {
+    background-color: #fafafa;
+    padding: 20px 10px;
+    width: 70px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 50px;
+}
+
+
+
+.sidebar-iconLogo {
+    width: 80px;
+    height: 80px;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.logo-wrapper {
+    width: 70px;
+    height: 70px;
+    background-color: #d6eaff; 
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+
+.sidebar-iconLogo:hover {
+    transform: scale(1.1);
+}
+
+
+.form-container {
+    flex-grow: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.form-box {
+    width: 100%;
+    max-width: 700px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+h1 {
+    font-size: 50px;
+    color: #1565c0;
+    margin-bottom: 40px;
+    font-weight: bold;
+}
+
+embed {
+    width: 100%;
+    height: 600px;
+    border: 1px solid #ccc;
+}
+
+.form-buttons {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.btn-descargar {
+    background-color: #1f80e0;
+    color: white;
+    padding: 15px 40px;
+    border-radius: 20px;
+    font-size: 20px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.cancelar {
+    background-color: #e74c3c;
+    color: white;
+    text-decoration: none;
+    padding: 15px 40px;
+    border-radius: 20px;
+    font-size: 20px;
+    font-weight: bold;
+    display: inline-block;
+    box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.btn-descargar:hover {
+    background-color: #145c97;
+    transform: scale(1.1);
+}
+
+.cancelar:hover {
+    background-color: #b10a0a;
+    transform: scale(1.1);
+}

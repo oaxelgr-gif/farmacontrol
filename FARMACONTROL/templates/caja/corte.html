@@ -1,0 +1,140 @@
+{% extends "layouts/base.html" %}
+{% import "partials/_macros.html" as ui with context %}
+{% block title %}Corte de caja{% endblock %}
+{% block page_eyebrow %}<div class="page-eyebrow"><i class="fas fa-vault"></i> Caja</div>{% endblock %}
+{% block page_title %}{{ 'Corte de caja abierto' if corte_abierto else 'Corte de caja' }}{% endblock %}
+{% block page_sub %}
+<p class="page-sub">
+{% if corte_abierto %}<span class="pill pill-success"><span class="dot pulse"></span> Abierto desde {{ datos.fecha_apertura }}</span> · Corte #{{ datos.corte_id }}
+{% else %}Inicia tu turno registrando el fondo inicial.{% endif %}
+</p>
+{% endblock %}
+{% block page_actions %}
+{% if corte_abierto %}<button onclick="window.print()" class="btn btn-glass no-print"><i class="fas fa-print"></i> Preliminar</button>{% endif %}
+{% endblock %}
+
+{% block content %}
+{% if corte_abierto %}
+<section class="grid-stats reveal reveal-2">
+    {{ ui.stat('Fondo inicial', datos.fondo_inicial|money, 'fa-piggy-bank', 'neutral') }}
+    {{ ui.stat('Ventas en efectivo', datos.ventas_efectivo|money, 'fa-money-bill-wave', 'success') }}
+    {{ ui.stat('Ventas con tarjeta', datos.ventas_tarjeta|money, 'fa-credit-card', 'info') }}
+    {{ ui.stat('Transferencias', datos.ventas_transferencia|money, 'fa-building-columns', 'purple') }}
+</section>
+
+<section class="grid-3-1 reveal reveal-3">
+    <div class="card-glass glass">
+        <div class="card-head">
+            <h2 class="card-title"><span class="ico"><i class="fas fa-receipt"></i></span> Ventas del turno</h2>
+            <span class="pill pill-accent">{{ datos.total_ventas }} ventas · {{ datos.importe_ventas|money }}</span>
+        </div>
+        <div class="table-wrap table-scroll">
+            <table class="table">
+                <thead><tr><th>Folio</th><th>Hora</th><th>Cliente</th><th>Método</th><th class="num">Total</th></tr></thead>
+                <tbody>
+                {% for v in detalle_ventas %}
+                    <tr>
+                        <td><a class="mono fw-700" href="{{ url_for('ventas.ver_detalle_venta', venta_id=v.id) }}">{{ v.folio }}</a></td>
+                        <td class="text-2">{{ v.fecha|hora }}</td>
+                        <td class="text-2">{{ v.cliente or 'Público General' }}</td>
+                        <td>{{ ui.metodo_pill(v.metodo_pago) }}</td>
+                        <td class="num fw-800">{{ v.total|money }}</td>
+                    </tr>
+                {% else %}
+                    {{ ui.empty_row(5, 'Sin ventas en este corte', 'Las ventas del turno aparecerán aquí.', 'fa-receipt') }}
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <aside>
+        <div class="card-glass glass text-center">
+            <div class="text-muted fw-700" style="font-size:.78rem;text-transform:uppercase;letter-spacing:.06em">Efectivo esperado en caja</div>
+            <div class="hero-amount text-accent" style="margin:8px 0 4px">{{ datos.efectivo_en_caja|money }}</div>
+            <div class="text-muted" style="font-size:.82rem">Fondo inicial + ventas en efectivo</div>
+            <hr>
+            <div class="kv"><span>Total vendido (todos los métodos)</span><b>{{ datos.importe_ventas|money }}</b></div>
+            {% if datos.ventas_otros %}<div class="kv"><span>Otros métodos</span><b>{{ datos.ventas_otros|money }}</b></div>{% endif %}
+            <div class="kv"><span>Monto final estimado</span><b>{{ datos.monto_final_estimado|money }}</b></div>
+            <div class="kv"><span>Responsable</span><b>{{ datos.vendedor }}</b></div>
+        </div>
+
+        <div class="card-glass glass no-print">
+            <div class="alert alert-warning" style="margin-bottom:16px">
+                <i class="fas fa-triangle-exclamation text-warning"></i>
+                <div style="font-size:.85rem"><b>Antes de cerrar:</b> verifica que el efectivo físico coincida con el sistema. Al cerrar se imprimirá el ticket y tu sesión terminará.</div>
+            </div>
+            <form method="POST" action="{{ url_for('caja.cerrar_caja') }}"
+                  data-confirm="¿Cerrar la caja y terminar el turno?"
+                  data-confirm-text="Se registrará el corte, se generará el ticket de cierre y se cerrará tu sesión."
+                  data-confirm-ok="Sí, cerrar caja">
+                <button type="submit" class="btn btn-danger btn-lg btn-block"><i class="fas fa-lock"></i> Cerrar caja y salir</button>
+            </form>
+        </div>
+    </aside>
+</section>
+
+{% else %}
+<section class="grid-3-1 reveal reveal-2">
+    <div class="card-glass glass">
+        <div class="card-head">
+            <h2 class="card-title"><span class="ico"><i class="fas fa-unlock-keyhole"></i></span> Abrir nuevo corte</h2>
+            <span class="pill pill-warning"><i class="fas fa-lock"></i> Sin corte abierto</span>
+        </div>
+        <form method="POST" action="{{ url_for('caja.abrir_caja') }}" data-loading>
+            <label for="monto">Fondo inicial en efectivo</label>
+            <div class="input-icon prefix" style="margin-bottom:12px"><span style="font-size:1.4rem">$</span>
+                <input id="monto" type="number" name="monto_inicial" step="0.01" min="0" value="{{ '%.2f'|format(fondo_sugerido) }}" required
+                       class="form-control form-control-lg tnum fw-800" style="font-size:2rem;padding-left:44px">
+            </div>
+            <div class="d-flex flex-wrap" style="gap:8px;margin-bottom:20px">
+                {% for m in [0, 200, 500, 1000, 2000] %}
+                <button type="button" class="btn btn-glass btn-sm" onclick="var i=document.getElementById('monto');i.value='{{ m }}.00';i.focus()">{{ m|money }}</button>
+                {% endfor %}
+            </div>
+            <button type="submit" class="btn btn-success btn-lg btn-block"><i class="fas fa-unlock"></i> Abrir caja e iniciar turno</button>
+        </form>
+    </div>
+    <div class="card-glass glass">
+        <div class="card-head"><h2 class="card-title"><span class="ico"><i class="fas fa-circle-question"></i></span> ¿Cómo funciona?</h2></div>
+        <div class="steps" style="grid-template-columns:1fr">
+            <div class="step"><span class="n">1</span><div><b>Abre la caja</b><div class="text-2" style="font-size:.86rem">Registra el efectivo con el que inicias el turno.</div></div></div>
+            <div class="step"><span class="n">2</span><div><b>Vende</b><div class="text-2" style="font-size:.86rem">Cada venta se suma automáticamente al corte.</div></div></div>
+            <div class="step"><span class="n">3</span><div><b>Cierra</b><div class="text-2" style="font-size:.86rem">Verifica totales, imprime el ticket y termina tu sesión.</div></div></div>
+        </div>
+    </div>
+</section>
+
+<section class="card-glass glass reveal reveal-3">
+    <div class="card-head"><h2 class="card-title"><span class="ico"><i class="fas fa-clock-rotate-left"></i></span> Mis cortes recientes</h2></div>
+    <div class="table-wrap">
+        <table class="table">
+            <thead><tr><th>Corte</th><th>Fecha</th><th>Horario</th><th class="num">Fondo</th><th class="num">Monto final</th><th>Estado</th></tr></thead>
+            <tbody>
+            {% for c in historial %}
+                <tr>
+                    <td class="fw-800">#{{ c.id }}</td>
+                    <td>{{ c.fecha_apertura|fecha }}</td>
+                    <td class="text-2">{{ c.fecha_apertura|hora }} – {{ c.fecha_cierre|hora if c.fecha_cierre else '--:--' }}</td>
+                    <td class="num">{{ c.monto_inicial|money }}</td>
+                    <td class="num fw-800 text-success">{{ c.monto_final|money }}</td>
+                    <td><span class="pill pill-neutral"><i class="fas fa-lock"></i> Cerrado</span></td>
+                </tr>
+            {% else %}
+                {{ ui.empty_row(6, 'Aún no tienes cortes cerrados', '', 'fa-vault') }}
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var m = document.getElementById('monto'); if (m) { m.focus(); m.select(); }
+});
+</script>
+{% endblock %}

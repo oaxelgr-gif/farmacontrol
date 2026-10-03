@@ -1,0 +1,247 @@
+{% extends "clinica/_layout.html" %}
+{% import "partials/_macros.html" as ui with context %}
+{% block title %}Nueva consulta{% endblock %}
+{% block page_title %}Nueva consulta{% endblock %}
+{% block page_sub %}<p class="page-sub">{{ now()|fecha('%d/%m/%Y · %H:%M') }}{% if paciente %} · {{ paciente.nombre_completo }}{% endif %}</p>{% endblock %}
+
+{% block clinica %}
+{% if not paciente %}
+{# ================= Selección de paciente ================= #}
+<section class="card-glass glass reveal reveal-2" style="max-width:760px">
+    <div class="card-head"><h2 class="card-title"><span class="ico"><i class="fas fa-magnifying-glass"></i></span> ¿A quién vas a atender?</h2></div>
+    <div class="input-icon" style="margin-bottom:10px"><i class="fas fa-user"></i>
+        <input type="search" id="buscaPaciente" class="form-control form-control-lg" placeholder="Nombre, expediente, CURP o teléfono…" autofocus autocomplete="off">
+    </div>
+    <div id="resPacientes" class="list"></div>
+    <hr>
+    <div class="d-flex justify-content-between align-items-center flex-wrap" style="gap:10px">
+        <span class="text-2">¿Paciente de primera vez?</span>
+        <a href="{{ url_for('clinica.paciente_form') }}" class="btn btn-primary"><i class="fas fa-user-plus"></i> Registrar paciente nuevo</a>
+    </div>
+</section>
+{% else %}
+{% set p = paciente %}
+{% set ult = exp.ultima %}
+<form method="POST" id="formConsulta" class="grid-3-1 reveal reveal-2" data-loading autocomplete="off">
+    <input type="hidden" name="paciente_id" value="{{ p.id }}">
+    <input type="hidden" name="diagnosticos_json"><input type="hidden" name="medicamentos_json"><input type="hidden" name="estudios_json">
+    <div>
+        {# 1. Datos de la consulta #}
+        <section class="card-glass glass">
+            <div class="card-head"><h2 class="card-title"><span class="seccion-num">1</span> Motivo de consulta</h2></div>
+            <div class="row">
+                <div class="col-md-4 form-group">
+                    <label>Tipo de consulta</label>
+                    <select name="tipo" class="form-control">
+                        {% for k, v in TIPOS_CONSULTA.items() %}<option value="{{ k }}" {{ 'selected' if (k == 'primera_vez' and not exp.consultas) or (k == 'subsecuente' and exp.consultas) }}>{{ v }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4 form-group">
+                    <label>Concepto / honorarios</label>
+                    <select class="form-control" id="selConcepto">
+                        <option value="">— Elegir del catálogo —</option>
+                        {% for c in consultas_catalogo %}<option value="{{ c.precio|num }}">{{ c.nombre }} · {{ c.precio|money }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4 form-group">
+                    <label>Costo</label>
+                    <div class="input-icon prefix"><span>$</span><input type="number" step="0.01" min="0" name="costo" id="costo" class="form-control tnum" value="{{ (consultas_catalogo[0].precio|num) if consultas_catalogo else 0 }}"></div>
+                </div>
+                <div class="col-12 form-group">
+                    <label>Motivo de consulta *</label>
+                    <input name="motivo" class="form-control" required placeholder="Ej. Dolor de garganta y fiebre de 2 días" autofocus>
+                </div>
+                <div class="col-md-6 form-group"><label>Padecimiento actual</label><textarea name="padecimiento_actual" class="form-control" rows="3" placeholder="Inicio, evolución, características, síntomas acompañantes…"></textarea></div>
+                <div class="col-md-6 form-group" style="margin-bottom:0"><label>Interrogatorio por aparatos y sistemas</label><textarea name="interrogatorio" class="form-control" rows="3" placeholder="Positivos y negativos relevantes"></textarea></div>
+            </div>
+        </section>
+
+        {# 2. Signos vitales #}
+        <section class="card-glass glass">
+            <div class="card-head">
+                <h2 class="card-title"><span class="seccion-num">2</span> Signos vitales y somatometría</h2>
+                <div class="d-flex align-items-center" style="gap:12px;font-size:.85rem">IMC: <span id="imc-out">—</span> <span id="ta-out"></span></div>
+            </div>
+            <div class="vit-grid">
+                {% for nombre, etiqueta, unidad, paso, ph in [
+                    ('peso_kg','Peso','kg','0.1',''), ('talla_cm','Talla','cm','0.1', (ult.talla_cm|numero(0)) if ult and ult.talla_cm else ''),
+                    ('ta_sistolica','T/A sistólica','mmHg','1','120'), ('ta_diastolica','T/A diastólica','mmHg','1','80'),
+                    ('frecuencia_cardiaca','Frec. cardiaca','lpm','1','70'), ('frecuencia_respiratoria','Frec. respiratoria','rpm','1','16'),
+                    ('temperatura','Temperatura','°C','0.1','36.5'), ('saturacion_o2','Saturación O₂','%','1','98'),
+                    ('glucosa_capilar','Glucosa capilar','mg/dL','1',''), ('perimetro_abdominal','Perím. abdominal','cm','0.1','')] %}
+                <div class="form-group">
+                    <label>{{ etiqueta }}</label>
+                    <div class="unit"><input type="number" step="{{ paso }}" min="0" name="{{ nombre }}" class="form-control tnum" placeholder="{{ ph }}"
+                        {% if nombre == 'talla_cm' and ult and ult.talla_cm %}value="{{ ult.talla_cm|num }}"{% endif %}><span>{{ unidad }}</span></div>
+                </div>
+                {% endfor %}
+            </div>
+            {% if ult %}<p class="form-hint" style="margin-top:10px"><i class="fas fa-clock-rotate-left"></i> Consulta anterior ({{ ult.fecha|fecha }}):
+                {% if ult.peso_kg %}peso {{ ult.peso_kg|numero(1) }} kg · {% endif %}{% if ult.ta_sistolica %}T/A {{ ult.ta_sistolica }}/{{ ult.ta_diastolica }} · {% endif %}{% if ult.glucosa_capilar %}glucosa {{ ult.glucosa_capilar }} mg/dL{% endif %}</p>{% endif %}
+        </section>
+
+        {# 3. Exploración #}
+        <section class="card-glass glass">
+            <div class="card-head"><h2 class="card-title"><span class="seccion-num">3</span> Exploración física</h2></div>
+            <div class="form-group"><textarea name="exploracion_fisica" class="form-control" rows="4" placeholder="Habitus exterior, cabeza y cuello, tórax, abdomen, extremidades, neurológico…"></textarea></div>
+            <div class="form-group" style="margin:0"><label>Resultados de estudios previos</label><textarea name="resultados_previos" class="form-control" rows="2" placeholder="Laboratorio o gabinete que trae el paciente"></textarea></div>
+        </section>
+
+        {# 4. Diagnósticos #}
+        <section class="card-glass glass">
+            <div class="card-head">
+                <h2 class="card-title"><span class="seccion-num">4</span> Diagnóstico(s)</h2>
+                <button type="button" class="btn btn-glass btn-sm" data-add="diagnosticos"><i class="fas fa-plus"></i> Agregar diagnóstico</button>
+            </div>
+            <div data-repeater="diagnosticos"></div>
+            <p class="text-muted" data-empty-for="diagnosticos" style="margin:0">Agrega al menos un diagnóstico. Puedes buscar en el catálogo CIE-10.</p>
+        </section>
+
+        {# 5. Plan #}
+        <section class="card-glass glass">
+            <div class="card-head"><h2 class="card-title"><span class="seccion-num">5</span> Plan de tratamiento</h2></div>
+            <div class="row">
+                <div class="col-md-6 form-group"><label>Plan</label><textarea name="plan_tratamiento" class="form-control" rows="3" placeholder="Tratamiento farmacológico y no farmacológico"></textarea></div>
+                <div class="col-md-6 form-group"><label>Indicaciones al paciente</label><textarea name="indicaciones" class="form-control" rows="3" placeholder="Dieta, reposo, signos de alarma…"></textarea></div>
+                <div class="col-md-6 form-group" style="margin:0"><label>Pronóstico</label>
+                    <input name="pronostico" class="form-control" list="pronosticos" placeholder="Bueno para la vida y la función">
+                    <datalist id="pronosticos"><option value="Bueno para la vida y la función"><option value="Bueno para la vida, reservado para la función"><option value="Reservado a evolución"><option value="Malo para la vida"></datalist>
+                </div>
+            </div>
+        </section>
+
+        {# 6. Receta #}
+        <section class="card-glass glass">
+            <div class="card-head">
+                <h2 class="card-title"><span class="seccion-num">6</span> Receta médica <span class="text-muted" style="font-weight:500;font-size:.8rem">(opcional)</span></h2>
+                <button type="button" class="btn btn-glass btn-sm" data-add="medicamentos"><i class="fas fa-plus"></i> Agregar medicamento</button>
+            </div>
+            {% if exp.alergias %}<div class="alerta-alergias" style="margin:0 0 14px"><i class="fas fa-triangle-exclamation"></i> Alérgico a: {{ exp.alergias|map(attribute='alergeno')|join(', ') }}</div>{% endif %}
+            <div data-repeater="medicamentos"></div>
+            <p class="text-muted" data-empty-for="medicamentos" style="margin:0 0 10px">Sin medicamentos. Si agregas alguno se generará la receta imprimible.</p>
+            <div class="form-group" style="margin:12px 0 0"><label>Indicaciones generales de la receta</label>
+                <textarea name="indicaciones_receta" class="form-control" rows="2" placeholder="Se imprimen al pie de la receta"></textarea></div>
+        </section>
+
+        {# 7. Estudios #}
+        <section class="card-glass glass">
+            <div class="card-head">
+                <h2 class="card-title"><span class="seccion-num">7</span> Estudios solicitados <span class="text-muted" style="font-weight:500;font-size:.8rem">(opcional)</span></h2>
+                <button type="button" class="btn btn-glass btn-sm" data-add="estudios"><i class="fas fa-plus"></i> Agregar estudio</button>
+            </div>
+            <div data-repeater="estudios"></div>
+            <p class="text-muted" data-empty-for="estudios" style="margin:0">Laboratorio, imagen o gabinete. Quedarán como pendientes en el expediente.</p>
+        </section>
+
+        {# 8. Próxima cita #}
+        <section class="card-glass glass">
+            <div class="card-head"><h2 class="card-title"><span class="seccion-num">8</span> Seguimiento</h2></div>
+            <div class="row">
+                <div class="col-md-4 form-group"><label>Próxima cita</label><input type="date" name="proxima_cita" id="proxima" class="form-control" min="{{ hoy }}"></div>
+                <div class="col-md-3 form-group"><label>Hora</label><input type="time" name="proxima_cita_hora" class="form-control" value="10:00"></div>
+                <div class="col-md-5 form-group"><label>Atajos</label>
+                    <div class="d-flex flex-wrap" style="gap:6px">{% for d, t in [(7,'1 semana'),(15,'15 días'),(30,'1 mes'),(90,'3 meses')] %}<button type="button" class="btn btn-glass btn-sm" data-dias="{{ d }}">{{ t }}</button>{% endfor %}</div>
+                </div>
+            </div>
+            <p class="form-hint" style="margin:0">Se agendará automáticamente en la agenda del consultorio.</p>
+        </section>
+    </div>
+
+    {# =========== Lateral: resumen del paciente =========== #}
+    <aside>
+        <div class="card-glass glass side-resumen">
+            <div class="d-flex align-items-center" style="gap:12px;margin-bottom:12px">
+                <div class="pac-avatar {{ 'f' if p.sexo == 'F' }}" style="width:52px;height:52px;border-radius:16px;font-size:1.1rem">{{ p.nombre_completo|iniciales }}</div>
+                <div style="min-width:0"><div class="fw-800 truncate">{{ p.nombre_completo }}</div>
+                    <div class="cell-sub">{{ p.expediente }} · {{ p.edad or 'edad —' }} · {{ p.sexo_texto }}{% if p.tipo_sangre %} · {{ p.tipo_sangre }}{% endif %}</div></div>
+            </div>
+            {% if exp.alergias %}<div class="alerta-alergias" style="margin:0 0 12px"><i class="fas fa-triangle-exclamation"></i> {{ exp.alergias|map(attribute='alergeno')|join(', ') }}</div>
+            {% else %}<div class="pill pill-success" style="margin-bottom:12px"><i class="fas fa-circle-check"></i> Sin alergias conocidas</div>{% endif %}
+            <div class="kv"><span>Visitas previas</span><b>{{ exp.stats.visitas }}</b></div>
+            {% if ult %}<div class="kv"><span>Última consulta</span><b>{{ ult.fecha|fecha }}</b></div>{% endif %}
+            {% set activos = exp.padecimientos|rejectattr('estado', 'equalto', 'resuelto')|list %}
+            {% if activos %}<div style="margin:10px 0 6px" class="label fw-700 text-muted" >PADECIMIENTOS</div>
+                {% for x in activos %}<span class="pill pill-purple" style="margin:2px 2px 2px 0">{{ x.nombre }}</span>{% endfor %}{% endif %}
+            {% set meds = exp.medicamentos|selectattr('activo')|list %}
+            {% if meds %}<div style="margin:12px 0 6px" class="fw-700 text-muted">TRATAMIENTO ACTUAL</div>
+                {% for m in meds %}<div class="cell-sub">• {{ m.medicamento }} {{ m.frecuencia or '' }}</div>{% endfor %}{% endif %}
+            {% if ult and ult.diagnostico %}<div style="margin:12px 0 4px" class="fw-700 text-muted">ÚLTIMO DIAGNÓSTICO</div><div class="cell-sub">{{ ult.diagnostico }}</div>{% endif %}
+            <hr>
+            <button type="submit" class="btn btn-primary btn-lg btn-block"><i class="fas fa-floppy-disk"></i> Guardar consulta</button>
+            <button type="submit" name="imprimir" value="1" class="btn btn-glass btn-block" style="margin-top:8px"><i class="fas fa-print"></i> Guardar e imprimir receta</button>
+            <button type="submit" name="cobrar" value="1" class="btn btn-glass btn-block" style="margin-top:8px" title="Guarda y abre el punto de venta con los honorarios y la receta"><i class="fas fa-cash-register"></i> Guardar y cobrar en caja</button>
+            <a href="{{ url_for('clinica.expediente', paciente_id=p.id) }}" class="btn btn-ghost btn-block" style="margin-top:6px" target="_blank"><i class="fas fa-folder-open"></i> Ver expediente</a>
+        </div>
+    </aside>
+</form>
+
+{# Plantillas de filas dinámicas #}
+<template id="tpl-diagnosticos">
+    <div class="rep-row rep-diag">
+        <span class="n-badge" data-n></span>
+        <div class="form-group"><label>Diagnóstico</label><input data-field="descripcion" class="form-control" list="cie10-list" placeholder="Escribe o elige del catálogo CIE-10"></div>
+        <div class="form-group"><label>CIE-10</label><input data-field="cie10" class="form-control mono" list="cie10-codes" placeholder="J03.9"></div>
+        <div class="form-group"><label>Tipo</label><select data-field="tipo" class="form-control"><option value="principal">Principal</option><option value="secundario">Secundario</option><option value="presuntivo">Presuntivo</option></select></div>
+        <label class="chip-check" title="Se agregará a la lista de padecimientos del paciente"><input type="checkbox" data-field="agregar"> Al expediente</label>
+        <button type="button" class="btn btn-ghost btn-icon danger rm" title="Quitar"><i class="fas fa-xmark"></i></button>
+    </div>
+</template>
+<template id="tpl-medicamentos">
+    <div class="rep-row rep-med">
+        <span class="n-badge" data-n></span>
+        <input type="hidden" data-field="producto_id">
+        <div class="form-group"><label>Medicamento <span class="pill pill-success" data-inv hidden></span></label><input data-field="medicamento" class="form-control" placeholder="Nombre y concentración"></div>
+        <div class="form-group"><label>Presentación</label><input data-field="presentacion" class="form-control" placeholder="Tabletas, jarabe…" list="presentaciones"></div>
+        <div class="form-group"><label>Dosis</label><input data-field="dosis" class="form-control" placeholder="1 tableta"></div>
+        <div class="form-group"><label>Vía</label><select data-field="via" class="form-control">{% for v in VIAS %}<option>{{ v }}</option>{% endfor %}</select></div>
+        <div class="form-group"><label>Frecuencia</label><input data-field="frecuencia" class="form-control" list="frecuencias" placeholder="Cada 8 h"></div>
+        <button type="button" class="btn btn-ghost btn-icon danger rm" title="Quitar"><i class="fas fa-xmark"></i></button>
+        <div class="form-group"><label>Duración</label><input data-field="duracion" class="form-control" list="duraciones" placeholder="7 días"></div>
+        <div class="form-group"><label>Cantidad a surtir</label><input data-field="cantidad" class="form-control" placeholder="1 caja"></div>
+        <div class="form-group" style="grid-column: span 3"><label>Indicaciones</label><input data-field="indicaciones" class="form-control" placeholder="Tomar con alimentos…"></div>
+    </div>
+</template>
+<template id="tpl-estudios">
+    <div class="rep-row rep-est">
+        <span class="n-badge" data-n></span>
+        <div class="form-group"><label>Tipo</label><select data-field="tipo" class="form-control">{% for k, v in TIPOS_ESTUDIO.items() %}<option value="{{ k }}">{{ v }}</option>{% endfor %}</select></div>
+        <div class="form-group"><label>Estudio</label><input data-field="nombre" class="form-control" list="estudios-list" placeholder="Ej. Biometría hemática"></div>
+        <button type="button" class="btn btn-ghost btn-icon danger rm" title="Quitar"><i class="fas fa-xmark"></i></button>
+    </div>
+</template>
+<datalist id="cie10-list"></datalist><datalist id="cie10-codes"></datalist><datalist id="estudios-list"></datalist>
+<datalist id="frecuencias">{% for f in ['Cada 4 horas','Cada 6 horas','Cada 8 horas','Cada 12 horas','Cada 24 horas','Por la mañana','Por la noche','Antes de cada comida','Por razón necesaria','Dosis única'] %}<option value="{{ f }}">{% endfor %}</datalist>
+<datalist id="duraciones">{% for f in ['1 día','3 días','5 días','7 días','10 días','14 días','30 días','Indefinido','Hasta nueva indicación'] %}<option value="{{ f }}">{% endfor %}</datalist>
+<datalist id="presentaciones">{% for f in ['Tabletas','Cápsulas','Jarabe','Suspensión','Gotas','Solución inyectable','Inhalador','Crema','Ungüento','Óvulos','Supositorios','Parche'] %}<option value="{{ f }}">{% endfor %}</datalist>
+{% endif %}
+{% endblock %}
+
+{% block clinica_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    {% if not paciente %}
+    CL.buscadorPacientes(document.getElementById('buscaPaciente'), document.getElementById('resPacientes'),
+        "{{ url_for('clinica.api_pacientes') }}", function (id) { location.href = "{{ url_for('clinica.consulta_nueva') }}?paciente_id=" + id; });
+    {% else %}
+    CL.vitales();
+    CL.cargarCie10(); CL.cargarEstudios();
+    var diag = CL.repeater('diagnosticos', { alAgregar: CL.enlazarCie10 });
+    CL.repeater('medicamentos', { alAgregar: function (f) { CL.enlazarMedicamento(f, "{{ url_for('clinica.api_medicamentos') }}"); } });
+    CL.repeater('estudios');
+    diag.agregar({ tipo: 'principal' });
+    document.getElementById('selConcepto').addEventListener('change', function () { if (this.value) document.getElementById('costo').value = this.value; });
+    document.querySelectorAll('[data-dias]').forEach(function (b) {
+        b.addEventListener('click', function () {
+            var d = new Date(); d.setDate(d.getDate() + parseInt(b.getAttribute('data-dias'), 10));
+            document.getElementById('proxima').value = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+        });
+    });
+    // Evita perder la captura por accidente
+    var sucio = false, form = document.getElementById('formConsulta');
+    form.addEventListener('input', function () { sucio = true; });
+    form.addEventListener('submit', function () { sucio = false; });
+    window.addEventListener('beforeunload', function (e) { if (sucio) { e.preventDefault(); e.returnValue = ''; } });
+    {% endif %}
+});
+</script>
+{% endblock %}

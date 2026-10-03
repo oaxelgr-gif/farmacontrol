@@ -1,0 +1,34 @@
+{% extends "clinica/_layout.html" %}
+{% block title %}Perfil médico{% endblock %}
+{% block page_title %}Perfil médico{% endblock %}
+{% block page_sub %}<p class="page-sub">Estos datos aparecen en el encabezado y pie de tus recetas.</p>{% endblock %}
+{% block clinica %}
+<form method="POST" class="grid-3-1 reveal reveal-2" data-loading>
+    <section class="card-glass glass">
+        <div class="row">
+            {% for campo, etiqueta, col, ph in [
+                ('nombre_mostrar','Nombre como aparece en la receta *','col-md-8','Dr. Juan Pérez López'),
+                ('especialidad','Especialidad','col-md-4','Medicina General'),
+                ('cedula_profesional','Cédula profesional','col-md-4',''),
+                ('cedula_especialidad','Cédula de especialidad','col-md-4',''),
+                ('institucion','Institución que expide el título','col-md-4','Universidad…'),
+                ('telefono','Teléfono del consultorio','col-md-4',''),
+                ('email','Correo','col-md-4',''),
+                ('horario','Horario de atención','col-md-4','Lun a Vie 9:00 – 18:00'),
+                ('direccion','Dirección del consultorio','col-12','Calle, número, colonia, C.P., ciudad'),
+                ('leyenda_receta','Leyenda al pie de la receta','col-12','Ej. Vigencia de la receta: 30 días')] %}
+            <div class="{{ col }} form-group"><label>{{ etiqueta }}</label><input name="{{ campo }}" class="form-control" value="{{ m[campo] or '' }}" placeholder="{{ ph }}" {{ 'required' if campo == 'nombre_mostrar' }}></div>
+            {% endfor %}
+        </div>
+    </section>
+    <aside>
+        <section class="card-glass glass sticky-top-glass">
+            <div class="fw-800" style="color:var(--accent);font-size:1.1rem">{{ m.nombre_mostrar }}</div>
+            <div class="text-muted" style="font-size:.85rem">{{ m.especialidad or '' }}{% if m.cedula_profesional %} · Céd. {{ m.cedula_profesional }}{% endif %}</div>
+            <hr>
+            <button class="btn btn-primary btn-block"><i class="fas fa-floppy-disk"></i> Guardar perfil</button>
+            <p class="form-hint" style="margin-top:12px"><i class="fas fa-circle-info"></i> La receta se imprime en media hoja carta (8.5 × 5.5 in). También puedes imprimir original + copia en una hoja carta.</p>
+        </section>
+    </aside>
+</form>
+{% endblock %}

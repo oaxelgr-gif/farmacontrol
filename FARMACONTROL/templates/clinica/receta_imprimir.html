@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Receta {{ r.folio }} · {{ p.nombre_completo }}</title>
+<style>
+  /* Media hoja carta horizontal: 8.5 × 5.5 in. Con ?copias=2 se imprimen 2 recetas en hoja carta. */
+  @page { size: {{ '8.5in 11in' if copias == 2 else '8.5in 5.5in' }}; margin: 0; }
+  * { box-sizing: border-box; }
+  :root { --verde: #0e6b5e; --gris: #4b5a63; --linea: #c9d6d3; }
+  body { margin: 0; background: #e9eef0; font-family: "Inter", -apple-system, "Segoe UI", Roboto, Arial, sans-serif; color: #17242b; }
+  .toolbar { display: flex; gap: 8px; justify-content: center; padding: 14px; flex-wrap: wrap; }
+  .toolbar a, .toolbar button { border: 1px solid rgba(0,0,0,.12); background: #fff; color: #0d1b24; padding: 9px 16px; border-radius: 999px; font-weight: 600; font-size: 13px; cursor: pointer; text-decoration: none; font-family: inherit; }
+  .toolbar .primary { background: linear-gradient(180deg, #12a58f, #0e8a78); color: #fff; border-color: transparent; }
+  .hoja { width: 8.5in; margin: 0 auto 18px; background: #fff; box-shadow: 0 10px 30px rgba(0,0,0,.12); }
+  .receta { width: 8.5in; height: 5.5in; padding: .32in .42in .26in; display: flex; flex-direction: column; position: relative; overflow: hidden; }
+  .receta + .receta { border-top: 1px dashed #9aa; }
+  .marca { position: absolute; right: .3in; top: 1.35in; width: 2.6in; opacity: .05; pointer-events: none; }
+  /* Encabezado */
+  .head { display: grid; grid-template-columns: .85in 1fr auto; gap: .18in; align-items: center; padding-bottom: .08in; border-bottom: 2.5px solid var(--verde); }
+  .head img { width: .85in; }
+  .medico { font-size: 15pt; font-weight: 800; color: var(--verde); letter-spacing: -.01em; line-height: 1.1; }
+  .esp { font-size: 9.5pt; font-weight: 700; color: var(--gris); text-transform: uppercase; letter-spacing: .04em; margin-top: 2px; }
+  .ced { font-size: 8pt; color: var(--gris); margin-top: 3px; line-height: 1.35; }
+  .folio { text-align: right; font-size: 8pt; color: var(--gris); line-height: 1.5; }
+  .folio b { display: block; font-size: 11pt; color: #17242b; letter-spacing: .03em; }
+  /* Datos del paciente */
+  .pac { display: grid; grid-template-columns: 2.6fr 1fr 1fr 1fr 1fr 1fr 1fr; gap: 0; margin-top: .08in; border: 1px solid var(--linea); border-radius: 6px; overflow: hidden; }
+  .pac div { padding: 3px 7px; border-right: 1px solid var(--linea); font-size: 9pt; line-height: 1.25; }
+  .pac div:last-child { border-right: 0; }
+  .pac small { display: block; font-size: 6.5pt; color: var(--gris); text-transform: uppercase; letter-spacing: .05em; font-weight: 700; }
+  .alergia { margin-top: 4px; font-size: 8.5pt; color: #b42318; font-weight: 700; }
+  .dx { margin-top: 5px; font-size: 9pt; }
+  .dx b { color: var(--verde); }
+  /* Prescripción */
+  .rx { flex: 1; margin-top: .06in; display: grid; grid-template-columns: .42in 1fr; min-height: 0; }
+  .rx-simbolo { font-family: Georgia, "Times New Roman", serif; font-size: 26pt; font-weight: 700; color: var(--verde); line-height: 1; padding-top: 2px; }
+  .meds { list-style: none; margin: 0; padding: 0; font-size: 9.6pt; line-height: 1.32; overflow: hidden; }
+  .meds li { padding: 3px 0; border-bottom: 1px dotted var(--linea); display: grid; grid-template-columns: 16px 1fr; }
+  .meds li:last-child { border-bottom: 0; }
+  .meds .n { font-weight: 800; color: var(--verde); }
+  .meds .nom { font-weight: 800; }
+  .meds .pres { color: var(--gris); font-weight: 500; }
+  .meds .surtir { font-size: 8pt; color: var(--gris); }
+  .indic { font-size: 8.6pt; margin-top: 4px; padding: 4px 8px; background: #f2f7f6; border-left: 3px solid var(--verde); border-radius: 3px; white-space: pre-line; }
+  /* Pie */
+  .pie { display: grid; grid-template-columns: 1fr 2.4in; gap: .25in; align-items: end; margin-top: .06in; }
+  .cita { font-size: 8.6pt; }
+  .cita b { color: var(--verde); }
+  .firma { text-align: center; font-size: 8pt; color: var(--gris); }
+  .firma .linea { border-top: 1px solid #17242b; margin-bottom: 3px; padding-top: 2px; }
+  .firma b { color: #17242b; font-size: 8.6pt; }
+  .barra { margin: .06in -.42in -.26in; padding: 5px .42in; background: var(--verde); color: #fff; font-size: 7.6pt; display: flex; justify-content: space-between; gap: 10px; }
+  .copia-label { position: absolute; top: .12in; right: .42in; font-size: 7pt; color: #9aa; letter-spacing: .1em; }
+  @media print {
+    body { background: #fff; }
+    .toolbar { display: none; }
+    .hoja { margin: 0; box-shadow: none; }
+    .receta + .receta { border-top: 1px dashed #bbb; }
+  }
+</style>
+</head>
+<body>
+<div class="toolbar">
+  <button class="primary" onclick="window.print()">Imprimir</button>
+  {% if copias == 2 %}<a href="?copias=1">Solo media carta</a>{% else %}<a href="?copias=2">Original + copia (hoja carta)</a>{% endif %}
+  {% if not r.venta_id %}<a href="{{ url_for('ventas.punto_venta', receta=r.id) }}">Surtir en farmacia</a>{% endif %}
+  <a href="{{ url_for('clinica.expediente', paciente_id=p.id) }}#recetas">Ir al expediente</a>
+  <a href="{{ url_for('clinica.perfil') }}">Editar encabezado</a>
+</div>
+
+<div class="hoja">
+{% for copia in range(copias) %}
+<section class="receta">
+  {% if copias == 2 %}<span class="copia-label">{{ 'ORIGINAL · PACIENTE' if loop.first else 'COPIA · EXPEDIENTE' }}</span>{% endif %}
+  <img class="marca" src="{{ url_for('static', filename='img/logo-icon.png') }}" alt="">
+  <header class="head">
+    <img src="{{ url_for('static', filename='img/logo-transparente.png') }}" alt="{{ negocio.nombre }}">
+    <div>
+      <div class="medico">{{ m.nombre_mostrar }}</div>
+      {% if m.especialidad %}<div class="esp">{{ m.especialidad }}</div>{% endif %}
+      <div class="ced">
+        {% if m.cedula_profesional %}Céd. Prof. {{ m.cedula_profesional }}{% endif %}{% if m.cedula_especialidad %} · Céd. Esp. {{ m.cedula_especialidad }}{% endif %}
+        {% if m.institucion %}<br>{{ m.institucion }}{% endif %}
+      </div>
+    </div>
+    <div class="folio">Folio<b>{{ r.folio }}</b>{{ r.fecha.strftime('%d/%m/%Y') }}<br>{{ r.fecha.strftime('%H:%M') }} h</div>
+  </header>
+
+  <div class="pac">
+    <div><small>Paciente</small><b>{{ p.nombre_completo }}</b></div>
+    <div><small>Edad</small>{{ edad_de(p.fecha_nacimiento, r.fecha) or '—' }}</div>
+    <div><small>Sexo</small>{{ {'F': 'Fem.', 'M': 'Masc.', 'O': 'Otro'}.get(p.sexo, '—') }}</div>
+    <div><small>Peso</small>{{ (c.peso_kg|numero(1) ~ ' kg') if c and c.peso_kg else '—' }}</div>
+    <div><small>Talla</small>{{ (c.talla_cm|numero(0) ~ ' cm') if c and c.talla_cm else '—' }}</div>
+    <div><small>T/A</small>{{ (c.ta_sistolica ~ '/' ~ c.ta_diastolica) if c and c.ta_sistolica else '—' }}</div>
+    <div><small>Temp.</small>{{ (c.temperatura|numero(1) ~ ' °C') if c and c.temperatura else '—' }}</div>
+  </div>
+  {% if r.alergias %}<div class="alergia">⚠ ALERGIAS: {{ r.alergias|map(attribute='alergeno')|join(', ')|upper }}</div>{% endif %}
+  {% if r.diagnostico %}<div class="dx"><b>Dx:</b> {{ r.diagnostico }}</div>{% endif %}
+
+  <div class="rx">
+    <div class="rx-simbolo">℞</div>
+    <div>
+      <ol class="meds">
+        {% for x in r.medicamentos %}
+        <li><span class="n">{{ loop.index }}.</span>
+          <span><span class="nom">{{ x.medicamento }}</span>{% if x.presentacion %} <span class="pres">· {{ x.presentacion }}</span>{% endif %}<br>
+          {{ ('Tomar ' if (x.via or 'Oral') == 'Oral' else 'Aplicar ') }}{{ x.dosis or '' }}{% if x.via %} vía {{ x.via|lower }}{% endif %}{% if x.frecuencia %} {{ x.frecuencia|lower }}{% endif %}{% if x.duracion %} durante {{ x.duracion }}{% endif %}.
+          {% if x.indicaciones %}{{ x.indicaciones }}.{% endif %}
+          {% if x.cantidad %}<span class="surtir">— Surtir: {{ x.cantidad }}</span>{% endif %}</span>
+        </li>
+        {% endfor %}
+      </ol>
+      {% if r.indicaciones_generales %}<div class="indic"><b>Indicaciones:</b> {{ r.indicaciones_generales }}</div>{% endif %}
+    </div>
+  </div>
+
+  <footer class="pie">
+    <div class="cita">
+      {% if r.proxima_cita %}<b>Próxima cita:</b> {{ r.proxima_cita|fecha }}<br>{% endif %}
+      {% if m.leyenda_receta %}<span style="color:#4b5a63;font-size:7.6pt">{{ m.leyenda_receta }}</span>{% endif %}
+    </div>
+    <div class="firma"><div style="height:.38in"></div><div class="linea"></div><b>{{ m.nombre_mostrar }}</b><br>{% if m.cedula_profesional %}Céd. Prof. {{ m.cedula_profesional }}{% endif %}</div>
+  </footer>
+  <div class="barra">
+    <span>{{ m.direccion or negocio.nombre ~ ' · ' ~ negocio.sucursal }}</span>
+    <span>{% if m.telefono %}Tel. {{ m.telefono }}{% endif %}{% if m.horario %} · {{ m.horario }}{% endif %}</span>
+  </div>
+</section>
+{% endfor %}
+</div>
+</body>
+</html>

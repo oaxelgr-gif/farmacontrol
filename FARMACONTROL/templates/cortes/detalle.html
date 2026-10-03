@@ -1,0 +1,69 @@
+{% extends "layouts/base.html" %}
+{% import "partials/_macros.html" as ui with context %}
+{% block title %}Corte #{{ corte.id }}{% endblock %}
+{% block page_eyebrow %}{{ ui.back_link(url_for('cortes.reimpresion_cortes'), 'Cortes de turno') }}{% endblock %}
+{% block page_title %}Corte #{{ corte.id }}{% endblock %}
+{% block page_sub %}<p class="page-sub">{{ corte.usuario_nombre }} · {{ corte.fecha_apertura|fecha_hora }} → {{ corte.fecha_cierre|fecha_hora }} · {{ datos.duracion }}</p>{% endblock %}
+{% block page_actions %}
+<a href="{{ url_for('cortes.imprimir_corte', corte_id=corte.id) }}" target="_blank" class="btn btn-primary no-print"><i class="fas fa-print"></i> Imprimir ticket</a>
+{% endblock %}
+
+{% block content %}
+<section class="grid-stats reveal reveal-2">
+    {{ ui.stat('Fondo inicial', datos.fondo_inicial|money, 'fa-piggy-bank', 'neutral') }}
+    {{ ui.stat('Total vendido', datos.total_ventas|money, 'fa-sack-dollar', 'accent', total_ventas|string + ' ventas') }}
+    {{ ui.stat('Efectivo en caja', datos.efectivo_en_caja|money, 'fa-money-bill-wave', 'success') }}
+    {{ ui.stat('Monto final', datos.monto_final|money, 'fa-flag-checkered', 'blue') }}
+</section>
+
+<section class="grid-3-1 reveal reveal-3">
+    <div>
+        <div class="card-glass glass">
+            <div class="card-head"><h2 class="card-title"><span class="ico"><i class="fas fa-receipt"></i></span> Ventas del corte ({{ ventas|length }})</h2>
+                <input type="search" class="form-control" style="max-width:240px" placeholder="Filtrar…" data-table-filter="#tablaVentasCorte"></div>
+            <div class="table-wrap table-scroll">
+                <table class="table" id="tablaVentasCorte">
+                    <thead><tr><th>Folio</th><th>Hora</th><th>Cliente</th><th>Método</th><th>Productos</th><th class="num">Total</th></tr></thead>
+                    <tbody>
+                    {% for v in ventas %}
+                        <tr>
+                            <td><a class="mono fw-700" href="{{ url_for('ventas.ver_detalle_venta', venta_id=v.id) }}">{{ v.folio }}</a></td>
+                            <td class="text-2">{{ v.fecha|hora }}</td>
+                            <td class="text-2">{{ v.cliente or 'Público General' }}</td>
+                            <td>{{ ui.metodo_pill(v.metodo_pago) }}</td>
+                            <td><span class="cell-sub" title="{{ v.productos_resumen }}">{{ (v.productos_resumen or '')|truncate(48) }}</span></td>
+                            <td class="num fw-800">{{ v.total|money }}</td>
+                        </tr>
+                    {% else %}
+                        {{ ui.empty_row(6, 'No hay ventas registradas en este corte') }}
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <aside>
+        <div class="card-glass glass">
+            <div class="card-head"><h2 class="card-title"><span class="ico"><i class="fas fa-wallet"></i></span> Por método de pago</h2></div>
+            {% for metodo, s in ventas_por_metodo.items() %}
+                <div class="kv"><span>{{ ui.metodo_pill(metodo) }} <small class="text-muted">{{ s.cantidad }}</small></span><b>{{ s.monto|money }}</b></div>
+            {% else %}
+                <div class="text-muted">Sin datos</div>
+            {% endfor %}
+        </div>
+        <div class="card-glass glass">
+            <div class="card-head"><h2 class="card-title"><span class="ico"><i class="fas fa-ranking-star"></i></span> Más vendidos</h2></div>
+            <div class="list">
+            {% for p in productos_vendidos %}
+                <div class="list-item">
+                    <div class="grow"><div class="cell-title truncate">{{ p.nombre }}</div><div class="cell-sub">{{ p.veces_vendido }} ventas · {{ p.total_venta|money }}</div></div>
+                    <span class="pill pill-accent">{{ p.cantidad_vendida }} u.</span>
+                </div>
+            {% else %}
+                {{ ui.empty('Sin productos', '', 'fa-capsules') }}
+            {% endfor %}
+            </div>
+        </div>
+    </aside>
+</section>
+{% endblock %}

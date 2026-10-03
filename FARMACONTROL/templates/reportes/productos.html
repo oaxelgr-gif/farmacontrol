@@ -1,0 +1,82 @@
+{% extends "reportes/_layout.html" %}
+{% import "partials/_macros.html" as ui with context %}
+{% block title %}Productos más vendidos{% endblock %}
+{% block page_sub %}<p class="page-sub">Del {{ fecha_inicio|fecha }} al {{ fecha_fin|fecha }}</p>{% endblock %}
+
+{% block content %}
+<section class="card-glass glass reveal no-print" style="margin-bottom:20px">
+    <form method="GET" class="filter-bar">
+        {{ ui.date_range('fecha_inicio', fecha_inicio, 'fecha_fin', fecha_fin) }}
+        <div class="actions"><button class="btn btn-primary"><i class="fas fa-rotate"></i> Actualizar</button></div>
+    </form>
+</section>
+
+<section class="grid-stats reveal reveal-2">
+    {{ ui.stat('Productos distintos', estadisticas.productos_vendidos or 0, 'fa-capsules', 'accent') }}
+    {{ ui.stat('Unidades vendidas', estadisticas.unidades_vendidas|numero, 'fa-cubes', 'blue') }}
+    {{ ui.stat('Venta total', estadisticas.venta_total|money, 'fa-sack-dollar', 'success') }}
+    {{ ui.stat('Promedio por línea', estadisticas.promedio_unidades|numero(1) ~ ' u.', 'fa-chart-simple', 'purple') }}
+</section>
+
+<section class="grid-3-1 reveal reveal-3" style="margin-bottom:20px">
+    <div class="card-glass glass">
+        <div class="card-head"><h2 class="card-title"><span class="ico"><i class="fas fa-ranking-star"></i></span> Top 10 por unidades</h2></div>
+        <div class="chart-box" style="height:340px"><canvas id="topChart"></canvas></div>
+    </div>
+    <div>
+        <div class="card-glass glass">
+            <div class="card-head"><h2 class="card-title"><span class="ico"><i class="fas fa-pills"></i></span> Antibióticos vs general</h2></div>
+            <div class="chart-box sm"><canvas id="compChart"></canvas></div>
+        </div>
+        <div class="card-glass glass">
+            <div class="card-head"><h2 class="card-title"><span class="ico"><i class="fas fa-layer-group"></i></span> Por sección</h2></div>
+            {% for s in por_seccion %}
+                <div class="kv"><span>{{ s.seccion }}</span><b>{{ s.venta_total|money }}</b></div>
+            {% else %}<div class="text-muted">Sin datos</div>{% endfor %}
+        </div>
+    </div>
+</section>
+
+<section class="card-glass glass reveal reveal-4">
+    <div class="card-head"><h2 class="card-title"><span class="ico"><i class="fas fa-table-list"></i></span> Ranking de productos</h2></div>
+    <div class="table-wrap">
+        <table class="table">
+            <thead><tr><th>#</th><th>Producto</th><th>Sección</th><th class="num">Unidades</th><th class="num">Ventas</th><th class="num">Precio prom.</th><th class="num">Importe</th></tr></thead>
+            <tbody>
+            {% for p in top_productos %}
+                <tr>
+                    <td class="fw-800 text-muted">{{ loop.index }}</td>
+                    <td><div class="cell-title">{{ p.nombre }}{% if p.antibiotico %} <span class="pill pill-purple">Antibiótico</span>{% endif %}</div><div class="cell-sub mono">{{ p.codigo_barras or '' }}</div></td>
+                    <td class="text-2">{{ p.seccion or 'Sin sección' }}</td>
+                    <td class="num fw-800">{{ p.cantidad_vendida|numero }}</td>
+                    <td class="num">{{ p.veces_vendido }}</td>
+                    <td class="num text-2">{{ p.precio_promedio|money }}</td>
+                    <td class="num fw-800 text-accent">{{ p.total_venta|money }}</td>
+                </tr>
+            {% else %}
+                {{ ui.empty_row(7, 'Sin ventas de productos en el periodo') }}
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}
+
+{% block report_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var top = {{ top_productos[:10]|map(attribute='nombre')|list|tojson }};
+    var cant = {{ top_productos[:10]|map(attribute='cantidad_vendida')|map('num')|list|tojson }};
+    var cat = {{ comparativa|map(attribute='categoria')|list|tojson }};
+    var catV = {{ comparativa|map(attribute='venta_total')|map('num')|list|tojson }};
+    crearGrafica('topChart', function (c) {
+        return { type: 'bar', data: { labels: top, datasets: [{ data: cant, backgroundColor: c.accent, borderRadius: 8, maxBarThickness: 24 }] },
+            options: { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, ticks: { precision: 0 } }, y: { grid: { display: false } } } } };
+    });
+    crearGrafica('compChart', function (c) {
+        return { type: 'doughnut', data: { labels: cat, datasets: [{ data: catV, backgroundColor: [c.series[2], c.series[0]], borderWidth: 0 }] },
+            options: { cutout: '66%', plugins: { legend: { position: 'bottom' }, tooltip: { callbacks: { label: function (x) { return x.label + ': ' + FC.money(x.parsed); } } } } } };
+    });
+});
+</script>
+{% endblock %}

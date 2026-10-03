@@ -1,0 +1,154 @@
+{% extends "clinica/_layout.html" %}
+{% import "partials/_macros.html" as ui with context %}
+{% set k = r.kpis %}
+{% block title %}Reportes clínicos{% endblock %}
+{% block page_title %}Reportes del consultorio{% endblock %}
+{% block page_sub %}<p class="page-sub">Del {{ r.desde|fecha }} al {{ r.hasta|fecha }} · consultas, honorarios, diagnósticos y recetas.</p>{% endblock %}
+{% block page_actions %}<a href="{{ url_for('clinica.reportes_csv', desde=r.desde, hasta=r.hasta) }}" class="btn btn-glass"><i class="fas fa-file-csv"></i> Exportar consultas</a>{% endblock %}
+{% block libs %}<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>{% endblock %}
+
+{% block clinica %}
+{% set mes_ini = hoy.replace(day=1) %}
+{% set mes_ant_fin = mes_ini - timedelta(days=1) %}
+<section class="card-glass glass reveal reveal-2" style="margin-bottom:18px">
+    <form method="GET" class="filter-bar">
+        {{ ui.date_range('desde', r.desde.isoformat(), 'hasta', r.hasta.isoformat()) }}
+        <div class="actions"><button class="btn btn-primary"><i class="fas fa-filter"></i> Aplicar</button></div>
+        <div class="actions" style="gap:6px;flex-wrap:wrap">
+            <a class="btn btn-ghost btn-sm" href="?desde={{ mes_ini }}&hasta={{ hoy }}">Este mes</a>
+            <a class="btn btn-ghost btn-sm" href="?desde={{ mes_ant_fin.replace(day=1) }}&hasta={{ mes_ant_fin }}">Mes anterior</a>
+            <a class="btn btn-ghost btn-sm" href="?desde={{ hoy - timedelta(days=89) }}&hasta={{ hoy }}">90 días</a>
+            <a class="btn btn-ghost btn-sm" href="?desde={{ hoy.replace(month=1, day=1) }}&hasta={{ hoy }}">Este año</a>
+        </div>
+    </form>
+</section>
+
+<section class="grid-stats reveal reveal-2">
+    {{ ui.stat('Consultas', k.consultas, 'fa-stethoscope', 'accent', k.pacientes ~ ' pacientes · ' ~ k.primera_vez ~ ' primera vez') }}
+    {{ ui.stat('Pacientes nuevos', k.pacientes_nuevos, 'fa-user-plus', 'blue', 'registrados en el periodo') }}
+    {{ ui.stat('Honorarios', k.honorarios|money, 'fa-sack-dollar', 'success', (k.cobrado|money) ~ ' cobrado') }}
+    {{ ui.stat('Por cobrar', k.pendiente|money, 'fa-hourglass-half', 'warning' if k.pendiente else 'neutral', 'Ver pendientes', '#pendientes') }}
+    {{ ui.stat('Recetas', k.recetas, 'fa-prescription', 'purple', k.surtido_pct ~ '% surtidas en farmacia') }}
+    {{ ui.stat('Estudios', k.estudios, 'fa-flask', 'info', k.estudios_resultado ~ ' con resultado') }}
+</section>
+
+<section class="grid-3-1 reveal reveal-3">
+    <div>
+        <div class="card-glass glass">
+            <div class="card-head"><h2 class="card-title"><span class="ico"><i class="fas fa-chart-column"></i></span> Consultas y honorarios cobrados · 12 meses</h2></div>
+            <div class="chart-box"><canvas id="chartMeses"></canvas></div>
+        </div>
+
+        <div class="card-glass glass">
+            <div class="card-head"><h2 class="card-title"><span class="ico"><i class="fas fa-virus"></i></span> Diagnósticos más frecuentes</h2></div>
+            <div class="table-wrap"><table class="table">
+                <thead><tr><th>Diagnóstico</th><th>CIE-10</th><th class="num">Consultas</th><th class="num">Pacientes</th></tr></thead>
+                <tbody>
+                {% set max_dx = (r.top_dx|map(attribute='n')|max) if r.top_dx else 1 %}
+                {% for d in r.top_dx %}
+                    <tr><td><div class="cell-title">{{ d.descripcion }}</div><div class="progress-glass" style="margin-top:6px;max-width:320px"><span style="width:{{ (100 * d.n / max_dx)|round(0) }}%"></span></div></td>
+                        <td class="mono">{{ d.cie10 or '—' }}</td><td class="num fw-700">{{ d.n }}</td><td class="num">{{ d.pacientes }}</td></tr>
+                {% else %}{{ ui.empty_row(4, 'Sin diagnósticos en el periodo', '', 'fa-virus') }}{% endfor %}
+                </tbody>
+            </table></div>
+        </div>
+
+        <div class="card-glass glass">
+            <div class="card-head"><h2 class="card-title"><span class="ico"><i class="fas fa-pills"></i></span> Medicamentos más recetados</h2></div>
+            <div class="table-wrap"><table class="table">
+                <thead><tr><th>Medicamento</th><th class="num">Recetas</th><th class="num">Surtidas aquí</th><th>Inventario</th></tr></thead>
+                <tbody>
+                {% for m in r.top_meds %}
+                    <tr><td class="cell-title">{{ m.medicamento }}</td><td class="num fw-700">{{ m.n }}</td><td class="num">{{ m.surtidas }}</td>
+                        <td>{% if m.en_inventario %}<span class="pill pill-success">Ligado</span>{% else %}<span class="pill pill-neutral" title="Se recetó como texto libre">Texto libre</span>{% endif %}</td></tr>
+                {% else %}{{ ui.empty_row(4, 'Sin recetas en el periodo', '', 'fa-pills') }}{% endfor %}
+                </tbody>
+            </table></div>
+        </div>
+
+        <div class="card-glass glass" id="pendientes">
+            <div class="card-head"><h2 class="card-title"><span class="ico"><i class="fas fa-cash-register"></i></span> Consultas pendientes de cobro</h2>
+                <span class="pill pill-{{ 'warning' if r.pendientes else 'success' }}">{{ r.pendientes|length }}</span></div>
+            <div class="table-wrap"><table class="table">
+                <thead><tr><th>Folio</th><th>Fecha</th><th>Paciente</th><th class="num">Honorarios</th><th class="num"></th></tr></thead>
+                <tbody>
+                {% for c in r.pendientes %}
+                    <tr><td class="mono fw-700"><a href="{{ url_for('clinica.consulta_detalle', consulta_id=c.id) }}">{{ c.folio }}</a></td>
+                        <td class="text-2">{{ c.fecha|fecha_hora }}</td>
+                        <td>{{ ui.user_cell(c.paciente, c.expediente) }}</td>
+                        <td class="num fw-700">{{ c.costo|money }}</td>
+                        <td class="num"><a class="btn btn-primary btn-sm" href="{{ url_for('ventas.punto_venta', consulta=c.id) }}"><i class="fas fa-cash-register"></i> Cobrar</a></td></tr>
+                {% else %}{{ ui.empty_row(5, 'Todo cobrado', 'No hay consultas con honorarios pendientes.', 'fa-circle-check') }}{% endfor %}
+                </tbody>
+            </table></div>
+        </div>
+    </div>
+
+    <aside>
+        <div class="card-glass glass">
+            <div class="card-head"><h2 class="card-title"><span class="ico"><i class="fas fa-layer-group"></i></span> Por tipo de consulta</h2></div>
+            {% set max_t = (r.por_tipo|map(attribute='n')|max) if r.por_tipo else 1 %}
+            {% for t in r.por_tipo %}
+                <div style="margin-bottom:12px"><div class="d-flex justify-content-between"><b>{{ t.texto }}</b><span class="text-2">{{ t.n }} · {{ t.monto|money }}</span></div>
+                    <div class="progress-glass" style="margin-top:6px"><span style="width:{{ (100 * t.n / max_t)|round(0) }}%"></span></div></div>
+            {% else %}<p class="text-muted">Sin consultas.</p>{% endfor %}
+        </div>
+
+        <div class="card-glass glass">
+            <div class="card-head"><h2 class="card-title"><span class="ico"><i class="fas fa-people-group"></i></span> Pacientes atendidos</h2></div>
+            <div class="kv"><span class="text-2">Por sexo</span><span></span></div>
+            {% for s, n in r.por_sexo.items() %}<div class="kv"><span>{{ s }}</span><b>{{ n }}</b></div>{% else %}<p class="text-muted">—</p>{% endfor %}
+            <div class="chart-box sm" style="margin-top:12px"><canvas id="chartEdad"></canvas></div>
+        </div>
+
+        <div class="card-glass glass">
+            <div class="card-head"><h2 class="card-title"><span class="ico"><i class="fas fa-calendar-check"></i></span> Agenda</h2></div>
+            <div class="kv"><span>Citas en el periodo</span><b>{{ k.citas }}</b></div>
+            <div class="kv"><span>Atendidas</span><b class="text-success">{{ k.atendidas }}</b></div>
+            <div class="kv"><span>No asistió</span><b class="{{ 'text-danger' if k.no_asistio }}">{{ k.no_asistio }}</b></div>
+            <div class="kv"><span>Ticket promedio</span><b>{{ k.ticket_promedio|money }}</b></div>
+        </div>
+
+        <div class="card-glass glass">
+            <div class="card-head"><h2 class="card-title"><span class="ico"><i class="fas fa-award"></i></span> Pacientes más frecuentes</h2></div>
+            {% for f in r.frecuentes %}
+                <a class="list-item" href="{{ url_for('clinica.expediente', paciente_id=f.id) }}" style="color:inherit">
+                    <div class="grow" style="min-width:0"><div class="cell-title truncate">{{ f.paciente }}</div><div class="cell-sub">{{ f.expediente }} · última {{ f.ultima|fecha }}</div></div>
+                    <span class="pill pill-accent">{{ f.visitas }} visita{{ 's' if f.visitas != 1 }}</span></a>
+            {% else %}<p class="text-muted">Sin consultas en el periodo.</p>{% endfor %}
+        </div>
+    </aside>
+</section>
+{% endblock %}
+
+{% block clinica_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    if (!window.Chart) return;
+    var MESES = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+    var meses = {{ r.por_mes|tojson }};
+    var edad = {{ r.por_edad|tojson }};
+    var charts = [];
+    var dibujar = function () {
+        FC.chartDefaults(); var c = FC.chartColors();
+        charts.forEach(function (x) { x.destroy(); }); charts = [];
+        charts.push(new Chart(document.getElementById('chartMeses'), {
+            data: { labels: meses.map(function (m) { return MESES[m.mes - 1] + ' ' + String(m.anio).slice(2); }),
+                datasets: [
+                    { type: 'bar', label: 'Consultas', data: meses.map(function (m) { return m.consultas; }), backgroundColor: c.accent, borderRadius: 8, maxBarThickness: 30, yAxisID: 'y' },
+                    { type: 'line', label: 'Cobrado', data: meses.map(function (m) { return m.cobrado; }), borderColor: c.series[1], backgroundColor: c.series[1], tension: .35, pointRadius: 3, yAxisID: 'y1' }
+                ] },
+            options: { interaction: { mode: 'index', intersect: false },
+                plugins: { tooltip: { callbacks: { label: function (ctx) { return ctx.dataset.label + ': ' + (ctx.dataset.yAxisID === 'y1' ? FC.money(ctx.parsed.y) : ctx.parsed.y); } } } },
+                scales: { y: { beginAtZero: true, ticks: { precision: 0 }, title: { display: true, text: 'Consultas' } },
+                          y1: { beginAtZero: true, position: 'right', grid: { drawOnChartArea: false }, ticks: { callback: function (v) { return FC.money(v); } } },
+                          x: { grid: { display: false } } } }
+        }));
+        charts.push(new Chart(document.getElementById('chartEdad'), { type: 'bar',
+            data: { labels: Object.keys(edad), datasets: [{ label: 'Pacientes', data: Object.values(edad), backgroundColor: c.series[2], borderRadius: 6, maxBarThickness: 22 }] },
+            options: { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, ticks: { precision: 0 } }, y: { grid: { display: false } } } } }));
+    };
+    dibujar(); document.addEventListener('fc:theme', dibujar);
+});
+</script>
+{% endblock %}

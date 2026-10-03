@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Corte #{{ datos.corte_id }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/ticket.css') }}">
+</head>
+<body>
+    <div class="toolbar no-print">
+        <button onclick="window.print()" class="tb-btn primary">Imprimir ticket</button>
+        {% if cierre_turno %}
+            <a href="{{ url_for('auth.login') }}" class="tb-btn">Ir al inicio de sesión</a>
+        {% else %}
+            <button onclick="history.length > 1 ? history.back() : window.close()" class="tb-btn">Cerrar</button>
+        {% endif %}
+    </div>
+    {% if cierre_turno %}
+    <div class="notice no-print">Corte cerrado correctamente. Tu sesión se cerró de forma segura.</div>
+    {% endif %}
+
+    <div class="ticket">
+        {% if datos.es_reimpresion %}<div class="center bold reimp">*** REIMPRESIÓN ***</div>{% endif %}
+        <div class="center">
+            <img class="logo" src="{{ url_for('static', filename='img/logo-transparente.png') }}" alt="">
+            <div class="bold big">{{ negocio.nombre }}</div>
+            <div class="small">{{ negocio.sucursal }}</div>
+            <div class="bold" style="margin-top:2mm;font-size:13px">CORTE DE CAJA #{{ datos.corte_id }}</div>
+        </div>
+        <div class="line"></div>
+
+        <div class="row"><span>Usuario</span><span>{{ datos.usuario }}</span></div>
+        <div class="row"><span>Apertura</span><span>{{ datos.fecha_apertura }}</span></div>
+        <div class="row"><span>Cierre</span><span>{{ datos.fecha_cierre if datos.cerrado else 'EN CURSO' }}</span></div>
+        {% if datos.duracion %}<div class="row"><span>Duración</span><span>{{ datos.duracion }}</span></div>{% endif %}
+        <div class="row"><span>Estado</span><span class="bold">{{ 'CERRADO' if datos.cerrado else 'ABIERTO' }}</span></div>
+        <div class="line"></div>
+
+        <div class="row"><span>Fondo inicial</span><span>{{ datos.fondo_inicial|money }}</span></div>
+        <div class="row"><span>Ventas efectivo</span><span>{{ datos.ventas_efectivo|money }}</span></div>
+        <div class="row"><span>Ventas tarjeta</span><span>{{ datos.ventas_tarjeta|money }}</span></div>
+        <div class="row"><span>Ventas transferencia</span><span>{{ datos.ventas_transferencia|money }}</span></div>
+        {% if datos.ventas_otros %}<div class="row"><span>Otros métodos</span><span>{{ datos.ventas_otros|money }}</span></div>{% endif %}
+        <div class="line"></div>
+
+        <div class="row"><span>Número de ventas</span><span>{{ datos.numero_ventas }}</span></div>
+        <div class="row bold"><span>TOTAL VENTAS</span><span>{{ datos.total_ventas|money }}</span></div>
+        <div class="row bold big total"><span>EFECTIVO EN CAJA</span><span>{{ datos.efectivo_en_caja|money }}</span></div>
+        <div class="row"><span>Monto final (fondo + ventas)</span><span>{{ datos.monto_final|money }}</span></div>
+
+        {% if datos.ventas %}
+        <div class="line"></div>
+        <div class="center bold small">VENTAS REGISTRADAS ({{ datos.ventas|length }})</div>
+        <table>
+            <thead><tr><th class="left">FOLIO</th><th>HORA</th><th>MÉT.</th><th class="right">TOTAL</th></tr></thead>
+            <tbody>
+            {% for v in datos.ventas|reverse %}
+                <tr><td class="left">{{ v.folio[-8:] }}</td><td class="center">{{ v.fecha.strftime('%H:%M') }}</td><td class="center">{{ (v.metodo_pago or '')[:3]|upper }}</td><td class="right">{{ v.total|money }}</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+
+        {% if datos.top_productos %}
+        <div class="line"></div>
+        <div class="center bold small">PRODUCTOS MÁS VENDIDOS</div>
+        <table>
+            <thead><tr><th class="left">PRODUCTO</th><th class="right">CANT</th><th class="right">TOTAL</th></tr></thead>
+            <tbody>
+            {% for p in datos.top_productos %}
+                <tr><td class="left">{{ p.nombre[:22] }}{% if p.antibiotico %} (A){% endif %}</td><td class="right">{{ p.cantidad_vendida }}</td><td class="right">{{ p.total_venta|money }}</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+
+        <div class="sign">
+            <div>______________________________</div>
+            <div class="small">FIRMA DEL RESPONSABLE</div>
+        </div>
+        <div class="center small muted">Impreso: {{ now().strftime('%d/%m/%Y %H:%M') }}</div>
+    </div>
+
+    <script>
+        if (window.self !== window.top) document.body.classList.add('embedded');
+        window.addEventListener('load', function () {
+            if (window.self === window.top) { setTimeout(function () { window.print(); }, 500); }
+        });
+    </script>
+</body>
+</html>

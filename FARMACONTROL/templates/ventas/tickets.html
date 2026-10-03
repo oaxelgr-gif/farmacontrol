@@ -1,0 +1,67 @@
+{% extends "layouts/base.html" %}
+{% import "partials/_macros.html" as ui with context %}
+{% set es_admin = current_user.rol == ROL_ADMIN %}
+{% block title %}Tickets{% endblock %}
+{% block page_eyebrow %}<div class="page-eyebrow"><i class="fas fa-receipt"></i> Historial de ventas</div>{% endblock %}
+{% block page_title %}{{ 'Tickets de venta' if es_admin else 'Mis tickets' }}{% endblock %}
+{% block page_sub %}<p class="page-sub">Busca una venta para ver su detalle o reimprimir el ticket.</p>{% endblock %}
+
+{% block content %}
+<section class="grid-stats reveal reveal-2">
+    {{ ui.stat('Ventas encontradas', total_ventas|numero, 'fa-receipt', 'accent') }}
+    {{ ui.stat('Importe total', total_importe|money, 'fa-sack-dollar', 'success') }}
+    {{ ui.stat('Ticket promedio', (total_importe / total_ventas if total_ventas else 0)|money, 'fa-chart-simple', 'blue') }}
+</section>
+
+<section class="card-glass glass reveal reveal-3">
+    <form method="GET" class="filter-bar" style="margin-bottom:18px">
+        <div class="form-group">
+            <label>Folio</label>
+            <div class="input-icon"><i class="fas fa-hashtag"></i>
+                <input type="search" name="folio" class="form-control" placeholder="TICK-…" value="{{ folio }}">
+            </div>
+        </div>
+        {{ ui.date_range('fecha_inicio', fecha_inicio, 'fecha_fin', fecha_fin) }}
+        {% if es_admin %}
+        <div class="form-group">
+            <label>Vendedor</label>
+            <select name="usuario_id" class="form-control">
+                <option value="">Todos</option>
+                {% for u in usuarios %}<option value="{{ u.id }}" {{ 'selected' if u.id|string == usuario_id }}>{{ u.nombre }}</option>{% endfor %}
+            </select>
+        </div>
+        {% endif %}
+        <div class="actions">
+            <button class="btn btn-primary" type="submit"><i class="fas fa-filter"></i> Buscar</button>
+            <a class="btn btn-glass" href="{{ url_for('ventas.reimprimir_tickets') }}">Limpiar</a>
+        </div>
+    </form>
+
+    <div class="table-wrap">
+        <table class="table">
+            <thead><tr><th>Folio</th><th>Fecha</th>{% if es_admin %}<th>Vendedor</th>{% endif %}<th>Cliente</th><th>Método</th><th class="num">Total</th><th class="num">Acciones</th></tr></thead>
+            <tbody>
+            {% for v in ventas %}
+                <tr>
+                    <td class="mono fw-700">{{ v.folio }}</td>
+                    <td><div>{{ v.fecha|fecha }}</div><div class="cell-sub">{{ v.fecha|hora }}</div></td>
+                    {% if es_admin %}<td>{{ ui.user_cell(v.vendedor) }}</td>{% endif %}
+                    <td class="text-2">{{ v.cliente or 'Público General' }}</td>
+                    <td>{{ ui.metodo_pill(v.metodo_pago) }}</td>
+                    <td class="num fw-800">{{ v.total|money }}</td>
+                    <td class="num" style="white-space:nowrap">
+                        <a class="btn btn-glass btn-icon" href="{{ url_for('ventas.ver_detalle_venta', venta_id=v.id) }}" title="Ver detalle"><i class="fas fa-eye"></i></a>
+                        <button class="btn btn-glass btn-icon" title="Reimprimir" onclick="verTicket({{ v.id }}, '{{ v.folio }}')"><i class="fas fa-print"></i></button>
+                    </td>
+                </tr>
+            {% else %}
+                {{ ui.empty_row(7, 'No se encontraron ventas', 'Ajusta los filtros de búsqueda.', 'fa-receipt') }}
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% if ventas|length >= 500 %}<p class="text-muted" style="margin:12px 0 0;font-size:.82rem">Se muestran las 500 ventas más recientes. Usa los filtros para acotar.</p>{% endif %}
+</section>
+{% endblock %}
+
+{% block modals %}{% include "partials/_ticket_modal.html" %}{% endblock %}

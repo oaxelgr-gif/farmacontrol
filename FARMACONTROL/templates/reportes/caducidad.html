@@ -1,0 +1,68 @@
+{% extends "reportes/_layout.html" %}
+{% import "partials/_macros.html" as ui with context %}
+{% block title %}Caducidades{% endblock %}
+{% block page_eyebrow %}
+{% if current_user.rol == ROL_ADMIN %}{{ ui.back_link(url_for('reportes.dashboard'), 'Reportes') }}
+{% else %}<div class="page-eyebrow"><i class="fas fa-calendar-xmark"></i> Control de caducidad</div>{% endif %}
+{% endblock %}
+{% block page_sub %}<p class="page-sub">Productos con existencia vencidos o que vencen antes del {{ limite|fecha }} ({{ dias_alerta }} días).</p>{% endblock %}
+
+{% block content %}
+<section class="grid-stats reveal reveal-2">
+    {{ ui.stat('Ya vencidos', ya_vencidos, 'fa-circle-xmark', 'danger') }}
+    {{ ui.stat('Por vencer', por_vencer, 'fa-hourglass-half', 'warning') }}
+    {{ ui.stat('Unidades en riesgo', total_unidades|numero, 'fa-cubes', 'blue') }}
+    {{ ui.stat('Valor en riesgo', total_valor|money, 'fa-coins', 'accent', 'a precio de costo') }}
+</section>
+
+<section class="card-glass glass reveal reveal-3">
+    <div class="card-head">
+        <h2 class="card-title"><span class="ico"><i class="fas fa-calendar-xmark"></i></span> Productos en riesgo <span class="pill pill-danger">{{ total_productos }}</span></h2>
+        <div class="segmented no-print" id="filtroCad">
+            <button class="active" data-f="todos">Todos</button>
+            <button data-f="vencido">Vencidos</button>
+            <button data-f="proximo">Por vencer</button>
+        </div>
+    </div>
+    <div class="alert alert-info no-print" style="margin-bottom:16px">
+        <i class="fas fa-shield-halved text-info"></i>
+        <div style="font-size:.86rem">Estos productos están <b>bloqueados en el punto de venta</b>. Retíralos del anaquel o gestiona su devolución con el proveedor.</div>
+    </div>
+    <div class="table-wrap">
+        <table class="table" id="tablaCad">
+            <thead><tr><th>Producto</th><th>Lote</th><th>Sección</th><th>Caducidad</th><th class="num">Días</th><th class="num">Existencia</th><th class="num">Valor</th></tr></thead>
+            <tbody>
+            {% for p in productos %}
+                {% set d = p.dias_restantes or 0 %}
+                <tr data-estado="{{ 'vencido' if d < 0 else 'proximo' }}">
+                    <td><div class="cell-title">{{ p.nombre }}{% if p.antibiotico %} <span class="pill pill-purple">Antibiótico</span>{% endif %}</div><div class="cell-sub mono">{{ p.codigo_barras or '' }}</div></td>
+                    <td class="mono">{{ p.lote or '—' }}</td>
+                    <td class="text-2">{{ p.seccion or 'Sin sección' }}</td>
+                    <td>{{ ui.caducidad_pill(p.fecha_caducidad, hoy, dias_alerta) }}</td>
+                    <td class="num fw-800 {{ 'text-danger' if d < 0 else 'text-warning' }}">{{ d }}</td>
+                    <td class="num">{{ p.stock_actual }}</td>
+                    <td class="num fw-700">{{ p.valor_inventario|money }}</td>
+                </tr>
+            {% else %}
+                {{ ui.empty_row(7, 'Sin productos en riesgo', 'Ningún producto con existencia vence en los próximos días.', 'fa-circle-check') }}
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}
+
+{% block report_scripts %}
+<script>
+document.querySelectorAll('#filtroCad button').forEach(function (b) {
+    b.addEventListener('click', function () {
+        document.querySelectorAll('#filtroCad button').forEach(function (x) { x.classList.remove('active'); });
+        b.classList.add('active');
+        var f = b.getAttribute('data-f');
+        document.querySelectorAll('#tablaCad tbody tr[data-estado]').forEach(function (tr) {
+            tr.style.display = f === 'todos' || tr.getAttribute('data-estado') === f ? '' : 'none';
+        });
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,92 @@
+{% extends "reportes/_layout.html" %}
+{% import "partials/_macros.html" as ui with context %}
+{% block title %}Análisis financiero{% endblock %}
+{% block page_sub %}<p class="page-sub">Del {{ f_inicio|fecha }} al {{ f_fin|fecha }}</p>{% endblock %}
+
+{% block content %}
+<section class="card-glass glass reveal no-print" style="margin-bottom:20px">
+    <form method="GET" class="filter-bar">
+        {{ ui.date_range('inicio', f_inicio, 'fin', f_fin) }}
+        <div class="actions"><button class="btn btn-primary"><i class="fas fa-rotate"></i> Actualizar</button></div>
+    </form>
+</section>
+
+<section class="grid-stats reveal reveal-2">
+    {{ ui.stat('Ingresos brutos', ingresos|money, 'fa-sack-dollar', 'accent', 'Total cobrado en caja') }}
+    {{ ui.stat('Utilidad estimada', ganancias|money, 'fa-arrow-trend-up', 'success' if ganancias >= 0 else 'danger', 'Margen ' + margen|pct) }}
+    {{ ui.stat('Ventas', total_ventas|numero, 'fa-receipt', 'blue') }}
+    {{ ui.stat('Ticket promedio', ticket_promedio|money, 'fa-scale-balanced', 'purple') }}
+</section>
+
+<section class="grid-3-1 reveal reveal-3" style="margin-bottom:20px">
+    <div class="card-glass glass">
+        <div class="card-head"><h2 class="card-title"><span class="ico"><i class="fas fa-chart-area"></i></span> Tendencia de ventas</h2></div>
+        <div class="chart-box"><canvas id="ventasChart"></canvas></div>
+    </div>
+    <div class="card-glass glass">
+        <div class="card-head"><h2 class="card-title"><span class="ico"><i class="fas fa-wallet"></i></span> Métodos de pago</h2></div>
+        <div class="chart-box"><canvas id="pagosChart"></canvas></div>
+    </div>
+</section>
+
+<section class="card-glass glass reveal reveal-3" style="margin-bottom:20px">
+    <div class="card-head"><h2 class="card-title"><span class="ico"><i class="fas fa-clock"></i></span> Ventas por hora del día</h2></div>
+    <div class="chart-box sm"><canvas id="horaChart"></canvas></div>
+</section>
+
+<section class="card-glass glass reveal reveal-4">
+    <div class="card-head">
+        <h2 class="card-title"><span class="ico"><i class="fas fa-table-list"></i></span> Registro de operaciones <span class="pill pill-accent">{{ tabla|length }}</span></h2>
+        <input type="search" class="form-control no-print" style="max-width:260px" placeholder="Filtrar operaciones…" data-table-filter="#tablaOps">
+    </div>
+    <div class="table-wrap table-scroll" style="max-height:560px">
+        <table class="table" id="tablaOps">
+            <thead><tr><th>Fecha</th><th>Folio</th><th>Vendedor</th><th>Cliente</th><th>Método</th><th class="num">Monto</th></tr></thead>
+            <tbody>
+            {% for r in tabla %}
+                <tr>
+                    <td class="text-2">{{ r.fecha|fecha_hora }}</td>
+                    <td><a class="mono" href="{{ url_for('ventas.ver_detalle_venta', venta_id=r.id) }}">{{ r.folio }}</a></td>
+                    <td>{{ r.vendedor }}</td>
+                    <td class="text-2">{{ r.cliente }}</td>
+                    <td>{{ ui.metodo_pill(r.metodo) }}</td>
+                    <td class="num fw-800">{{ r.total|money }}</td>
+                </tr>
+            {% else %}
+                {{ ui.empty_row(6, 'Sin operaciones en el periodo') }}
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}
+
+{% block report_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var dias = {{ v_diaria|map(attribute='fecha')|map('fecha', '%d/%m')|list|tojson }};
+    var totales = {{ v_diaria|map(attribute='total_dia')|map('num')|list|tojson }};
+    var metodos = {{ metodos|map(attribute='metodo')|list|tojson }};
+    var montos = {{ metodos|map(attribute='monto')|map('num')|list|tojson }};
+    var horas = {{ por_hora|map(attribute='hora')|list|tojson }};
+    var montosHora = {{ por_hora|map(attribute='monto')|map('num')|list|tojson }};
+
+    crearGrafica('ventasChart', function (c) {
+        var ctx = document.getElementById('ventasChart').getContext('2d');
+        var g = ctx.createLinearGradient(0, 0, 0, 280); g.addColorStop(0, 'rgba(14,138,120,.35)'); g.addColorStop(1, 'rgba(14,138,120,0)');
+        return { type: 'line', data: { labels: dias, datasets: [{ label: 'Ventas', data: totales, borderColor: c.accent, backgroundColor: g, fill: true, tension: .4, borderWidth: 3, pointRadius: 3, pointBackgroundColor: '#fff' }] },
+            options: { plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (x) { return FC.money(x.parsed.y); } } } },
+                scales: { y: { beginAtZero: true, ticks: { callback: moneyTick } }, x: { grid: { display: false } } } } };
+    });
+    crearGrafica('pagosChart', function (c) {
+        return { type: 'doughnut', data: { labels: metodos, datasets: [{ data: montos, backgroundColor: c.series, borderWidth: 0, hoverOffset: 10 }] },
+            options: { cutout: '68%', plugins: { legend: { position: 'bottom' }, tooltip: { callbacks: { label: function (x) { return x.label + ': ' + FC.money(x.parsed); } } } } } };
+    });
+    crearGrafica('horaChart', function (c) {
+        return { type: 'bar', data: { labels: horas.map(function (h) { return h + ':00'; }), datasets: [{ data: montosHora, backgroundColor: c.series[1], borderRadius: 8, maxBarThickness: 34 }] },
+            options: { plugins: { legend: { display: false }, tooltip: { callbacks: { label: function (x) { return FC.money(x.parsed.y); } } } },
+                scales: { y: { beginAtZero: true, ticks: { callback: moneyTick } }, x: { grid: { display: false } } } } };
+    });
+});
+</script>
+{% endblock %}

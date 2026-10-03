@@ -1,0 +1,69 @@
+{% extends "layouts/base.html" %}
+{% import "partials/_macros.html" as ui with context %}
+{% set h = now().hour %}
+{% block title %}Panel operativo{% endblock %}
+{% block page_eyebrow %}<div class="page-eyebrow"><i class="fas fa-staff-snake"></i> Panel operativo</div>{% endblock %}
+{% block page_title %}{{ 'Buenos días' if h < 12 else ('Buenas tardes' if h < 19 else 'Buenas noches') }}, {{ current_user.nombre.split()[0] }}{% endblock %}
+{% block page_sub %}
+<p class="page-sub">
+    {% if corte_abierto %}<span class="pill pill-success"><span class="dot pulse"></span> Caja abierta desde {{ corte.fecha_apertura|hora }}</span>
+    {% else %}<span class="pill pill-warning"><i class="fas fa-lock"></i> Sin caja abierta</span>{% endif %}
+</p>
+{% endblock %}
+
+{% block content %}
+<section class="grid-stats reveal reveal-2">
+    {{ ui.stat('Mis ventas de hoy', estadisticas.numero_ventas or 0, 'fa-receipt', 'accent') }}
+    {{ ui.stat('Importe vendido', estadisticas.total_ventas|money, 'fa-sack-dollar', 'blue') }}
+    {{ ui.stat('Efectivo', estadisticas.efectivo|money, 'fa-money-bill-wave', 'success') }}
+    {{ ui.stat('Tarjeta / transf.', ((estadisticas.tarjeta|num) + (estadisticas.transferencia|num))|money, 'fa-credit-card', 'info') }}
+</section>
+
+<section class="tiles mb-section reveal reveal-3" style="grid-template-columns:repeat(auto-fill,minmax(280px,1fr))">
+    <a href="{{ url_for('ventas.punto_farmacia') }}" class="tile card-glass glass lift" style="min-height:200px">
+        <div class="ico bg-accent"><i class="fas fa-cash-register"></i></div>
+        <h3>Nueva venta</h3><p>Medicamentos, servicios y consultas con control automático de inventario.</p>
+        <span class="go">Abrir punto de venta <i class="fas fa-arrow-right"></i></span>
+    </a>
+    <a href="{{ url_for('caja.corte_caja') }}" class="tile card-glass glass lift" style="min-height:200px">
+        <div class="ico bg-warning"><i class="fas fa-vault"></i></div>
+        <h3>{{ 'Corte de caja' if corte_abierto else 'Abrir caja' }}</h3>
+        <p>{% if corte_abierto %}Fondo + efectivo en caja: <b>{{ ((corte.monto_inicial|num) + (totales_corte.efectivo|num))|money }}</b>{% else %}Registra tu fondo inicial para empezar el turno.{% endif %}</p>
+        <span class="go">Ir a caja <i class="fas fa-arrow-right"></i></span>
+    </a>
+    <a href="{{ url_for('ventas.reimprimir_tickets') }}" class="tile card-glass glass lift" style="min-height:200px">
+        <div class="ico bg-purple"><i class="fas fa-receipt"></i></div>
+        <h3>Mis tickets</h3><p>Consulta y reimprime los tickets de tus ventas.</p>
+        <span class="go">Ver tickets <i class="fas fa-arrow-right"></i></span>
+    </a>
+    <a href="{{ url_for('reportes.caducidad') }}" class="tile card-glass glass lift" style="min-height:200px">
+        <div class="ico bg-danger"><i class="fas fa-calendar-xmark"></i></div>
+        <h3>Caducidades</h3><p>Productos vencidos o próximos a vencer.</p>
+        <span class="go">Revisar <i class="fas fa-arrow-right"></i></span>
+    </a>
+</section>
+
+<section class="card-glass glass reveal reveal-4">
+    <div class="card-head">
+        <h2 class="card-title"><span class="ico"><i class="fas fa-clock-rotate-left"></i></span> Mis últimas ventas de hoy</h2>
+    </div>
+    <div class="table-wrap">
+        <table class="table">
+            <thead><tr><th>Folio</th><th>Hora</th><th>Método</th><th class="num">Total</th><th></th></tr></thead>
+            <tbody>
+            {% for v in mis_ventas %}
+                <tr>
+                    <td class="mono fw-700">{{ v.folio }}</td>
+                    <td class="text-2">{{ v.fecha|hora }}</td>
+                    <td>{{ ui.metodo_pill(v.metodo) }}</td>
+                    <td class="num fw-800">{{ v.total|money }}</td>
+                    <td class="num"><a class="btn btn-glass btn-sm" href="{{ url_for('ventas.ver_detalle_venta', venta_id=v.id) }}"><i class="fas fa-eye"></i> Ver</a></td>
+                </tr>
+            {% else %}
+                {{ ui.empty_row(5, 'Sin ventas todavía', '¡Que tengas un excelente turno!', 'fa-mug-hot') }}
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

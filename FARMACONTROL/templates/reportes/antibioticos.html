@@ -1,0 +1,101 @@
+{% extends "reportes/_layout.html" %}
+{% import "partials/_macros.html" as ui with context %}
+{% block title %}Control de antibióticos{% endblock %}
+{% block page_sub %}<p class="page-sub">Del {{ fecha_inicio|fecha }} al {{ fecha_fin|fecha }} · Registro para control sanitario</p>{% endblock %}
+
+{% block content %}
+<section class="card-glass glass reveal no-print" style="margin-bottom:20px">
+    <form method="GET" class="filter-bar">
+        {{ ui.date_range('fecha_inicio', fecha_inicio, 'fecha_fin', fecha_fin) }}
+        <div class="form-group">
+            <label>Vendedor</label>
+            <select name="usuario_id" class="form-control">
+                <option value="">Todos</option>
+                {% for u in usuarios %}<option value="{{ u.id }}" {{ 'selected' if u.id|string == usuario_id }}>{{ u.nombre }}</option>{% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Antibiótico</label>
+            <select name="producto_id" class="form-control">
+                <option value="">Todos</option>
+                {% for a in antibioticos %}<option value="{{ a.id }}" {{ 'selected' if a.id|string == producto_id }}>{{ a.nombre }}</option>{% endfor %}
+            </select>
+        </div>
+        <div class="actions">
+            <button class="btn btn-primary"><i class="fas fa-filter"></i> Aplicar</button>
+            <a class="btn btn-glass" href="{{ url_for('reportes.antibioticos') }}">Limpiar</a>
+        </div>
+    </form>
+</section>
+
+<section class="grid-stats reveal reveal-2">
+    {{ ui.stat('Ventas con antibiótico', estadisticas.total_ventas or 0, 'fa-receipt', 'purple') }}
+    {{ ui.stat('Unidades', estadisticas.total_unidades|numero, 'fa-pills', 'accent') }}
+    {{ ui.stat('Importe', estadisticas.total_venta|money, 'fa-sack-dollar', 'blue') }}
+    {{ ui.stat('Utilidad', estadisticas.total_utilidad|money, 'fa-arrow-trend-up', 'success') }}
+</section>
+
+<section class="grid-2 reveal reveal-3" style="margin-bottom:20px">
+    <div class="card-glass glass">
+        <div class="card-head"><h2 class="card-title"><span class="ico"><i class="fas fa-ranking-star"></i></span> Más vendidos</h2></div>
+        <div class="chart-box"><canvas id="topChart"></canvas></div>
+    </div>
+    <div class="card-glass glass">
+        <div class="card-head"><h2 class="card-title"><span class="ico"><i class="fas fa-user-nurse"></i></span> Por vendedor</h2></div>
+        <div class="table-wrap">
+            <table class="table">
+                <thead><tr><th>Vendedor</th><th class="num">Ventas</th><th class="num">Unidades</th><th class="num">Importe</th></tr></thead>
+                <tbody>
+                {% for v in por_vendedor %}
+                    <tr><td>{{ ui.user_cell(v.vendedor) }}</td><td class="num">{{ v.ventas_realizadas }}</td><td class="num">{{ v.unidades_vendidas|numero }}</td><td class="num fw-800">{{ v.total_venta|money }}</td></tr>
+                {% else %}
+                    {{ ui.empty_row(4, 'Sin datos') }}
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+
+<section class="card-glass glass reveal reveal-4">
+    <div class="card-head">
+        <h2 class="card-title"><span class="ico"><i class="fas fa-prescription"></i></span> Bitácora de dispensación <span class="pill pill-purple">{{ registros|length }}</span></h2>
+        <input type="search" class="form-control no-print" style="max-width:260px" placeholder="Filtrar…" data-table-filter="#tablaAb">
+    </div>
+    <div class="table-wrap table-scroll" style="max-height:560px">
+        <table class="table" id="tablaAb">
+            <thead><tr><th>Fecha</th><th>Folio</th><th>Antibiótico</th><th>Lote</th><th class="num">Cant.</th><th>Vendedor</th><th>Cliente</th><th class="num">Importe</th><th class="num">Utilidad</th></tr></thead>
+            <tbody>
+            {% for r in registros %}
+                <tr>
+                    <td class="text-2">{{ r.fecha|fecha_hora }}</td>
+                    <td><a class="mono" href="{{ url_for('ventas.ver_detalle_venta', venta_id=r.venta_id) }}">{{ r.folio }}</a></td>
+                    <td class="cell-title">{{ r.producto }}</td>
+                    <td class="mono">{{ r.lote or '—' }}</td>
+                    <td class="num">{{ r.cantidad }}</td>
+                    <td>{{ r.vendedor }}</td>
+                    <td class="text-2">{{ r.cliente or 'Público General' }}</td>
+                    <td class="num fw-700">{{ r.subtotal|money }}</td>
+                    <td class="num text-success">{{ r.utilidad|money }}</td>
+                </tr>
+            {% else %}
+                {{ ui.empty_row(9, 'No hay ventas de antibióticos en el periodo', '', 'fa-pills') }}
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}
+
+{% block report_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var nombres = {{ top_productos|map(attribute='nombre')|list|tojson }};
+    var cant = {{ top_productos|map(attribute='cantidad_vendida')|map('num')|list|tojson }};
+    crearGrafica('topChart', function (c) {
+        return { type: 'bar', data: { labels: nombres, datasets: [{ data: cant, backgroundColor: c.series[2], borderRadius: 8, maxBarThickness: 26 }] },
+            options: { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, ticks: { precision: 0 } }, y: { grid: { display: false } } } } };
+    });
+});
+</script>
+{% endblock %}
