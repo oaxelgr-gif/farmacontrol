@@ -1,0 +1,47 @@
+{% extends "layouts/base.html" %}
+{% import "partials/_macros.html" as ui with context %}
+{% block title %}Reportes{% endblock %}
+{% block page_eyebrow %}<div class="page-eyebrow"><i class="fas fa-chart-pie"></i> Analítica</div>{% endblock %}
+{% block page_title %}Reportes y análisis{% endblock %}
+{% block page_sub %}<p class="page-sub">Toma decisiones con datos de ventas, inventario, personal y clientes.</p>{% endblock %}
+
+{% block content %}
+<section class="grid-stats reveal reveal-2">
+    {{ ui.stat('Ingresos de hoy', ventas_hoy.ingresos_hoy|money, 'fa-sack-dollar', 'accent', (ventas_hoy.ventas_hoy or 0)|string + ' ventas') }}
+    {{ ui.stat('Stock bajo', stock_bajo, 'fa-box-open', 'warning', 'Ver reporte', url_for('reportes.stock')) }}
+    {{ ui.stat('Por caducar', por_caducar, 'fa-calendar-xmark', 'danger', 'Ver reporte', url_for('reportes.caducidad')) }}
+    {{ ui.stat('Antibióticos hoy', antibioticos_hoy|numero, 'fa-pills', 'purple', 'unidades vendidas') }}
+    {{ ui.stat('Cajas abiertas', cortes_abiertos, 'fa-vault', 'blue') }}
+</section>
+
+{% set reportes = [
+    ('reportes.financiero', 'fa-chart-line', 'accent', 'Análisis financiero', 'Ingresos, utilidad, ticket promedio, tendencia diaria y métodos de pago.'),
+    ('reportes.ventas_detalladas', 'fa-receipt', 'blue', 'Ventas detalladas', 'Cada venta con filtros por vendedor, método de pago y cliente.'),
+    ('reportes.antibioticos', 'fa-pills', 'purple', 'Control de antibióticos', 'Bitácora sanitaria: compuesto, tipo, paciente, médico, cédula, receta y quién lo gestionó.'),
+    ('reportes.productos', 'fa-ranking-star', 'warning', 'Productos más vendidos', 'Top de productos, comparativa antibióticos vs general y por sección.'),
+    ('reportes.stock', 'fa-box-open', 'danger', 'Stock bajo', 'Productos bajo el mínimo, faltantes y valor de reposición.'),
+    ('reportes.caducidad', 'fa-calendar-xmark', 'danger', 'Caducidades', 'Productos vencidos o próximos a vencer y valor en riesgo.'),
+    ('reportes.personal', 'fa-user-tie', 'info', 'Rendimiento del personal', 'Ventas, ticket promedio, días trabajados y cortes por usuario.'),
+    ('reportes.clientes', 'fa-users', 'success', 'Clientes y fidelidad', 'Clientes frecuentes, gasto total y producto favorito.'),
+    ('cortes.reimpresion_cortes', 'fa-vault', 'neutral', 'Cortes de turno', 'Historial de cortes, detalle, reimpresión y exportación a CSV.'),
+    ('cortes.auditoria_cortes', 'fa-clipboard-check', 'neutral', 'Auditoría de cortes', 'Registro de cada cierre de caja con sus totales.'),
+] %}
+<section class="tiles reveal reveal-3">
+    {% for endpoint, icono, color, titulo, texto in reportes %}
+    <a href="{{ url_for(endpoint) }}" class="tile card-glass glass lift">
+        <div class="ico bg-{{ color }}"><i class="fas {{ icono }}"></i></div>
+        <h3>{{ titulo }}</h3>
+        <p>{{ texto }}</p>
+        <span class="go">Ver reporte <i class="fas fa-arrow-right"></i></span>
+    </a>
+    {% endfor %}
+    {% if api_docs_url %}
+    <a href="{{ api_docs_url }}" target="_blank" rel="noopener" class="tile card-glass glass lift">
+        <div class="ico bg-blue"><i class="fas fa-code"></i></div>
+        <h3>API REST (FastAPI)</h3>
+        <p>Documentación interactiva de la API para integraciones y apps móviles.</p>
+        <span class="go">Abrir Swagger <i class="fas fa-arrow-up-right-from-square"></i></span>
+    </a>
+    {% endif %}
+</section>
+{% endblock %}

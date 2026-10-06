@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ticket {{ venta.folio }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/ticket.css') }}">
+</head>
+<body>
+    <div class="toolbar no-print">
+        <button onclick="window.print()" class="tb-btn primary">Imprimir</button>
+        <button onclick="history.length > 1 ? history.back() : window.close()" class="tb-btn">Cerrar</button>
+    </div>
+
+    <div class="ticket">
+        {% if reimpresion %}<div class="center bold reimp">*** REIMPRESIÓN ***</div>{% endif %}
+        <div class="center">
+            <img class="logo" src="{{ url_for('static', filename='img/logo-transparente.png') }}" alt="">
+            <div class="bold big">{{ negocio.nombre }}</div>
+            <div class="small">{{ negocio.sucursal }}</div>
+            <div class="small">Tel. {{ negocio.telefono }}</div>
+        </div>
+        <div class="line"></div>
+        <div class="small">
+            Ticket: <b>{{ venta.folio }}</b><br>
+            Fecha: {{ venta.fecha.strftime('%d-%m-%Y') }} &nbsp; Hora: {{ venta.fecha.strftime('%H:%M:%S') }}<br>
+            Caja: {{ negocio.estacion }} &nbsp; Op: {{ venta.id }}<br>
+            Atendió: {{ venta.farmaceutico }}
+        </div>
+        <div class="line"></div>
+
+        <table>
+            <thead>
+                <tr><th class="left">DESCRIPCIÓN</th><th>CANT</th><th class="right">P.U.</th><th class="right">IMPORTE</th></tr>
+            </thead>
+            <tbody>
+            {% for d in detalles %}
+                <tr><td colspan="4" class="desc">{{ d.producto_nombre }}{% if d.antibiotico %} <b>[ANTIB]</b>{% endif %}</td></tr>
+                <tr>
+                    <td></td>
+                    <td class="center">{{ d.cantidad }}</td>
+                    <td class="right">{{ d.precio_unitario|money }}</td>
+                    <td class="right">{{ d.subtotal|money }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        <div class="line"></div>
+
+        <div class="right">
+            <div class="bold big">TOTAL: {{ venta.total|money }}</div>
+            <div>Recibido: {{ pago|money }}</div>
+            <div class="bold">Su cambio: {{ cambio|money }}</div>
+        </div>
+        <div class="line"></div>
+
+        <div class="center small">
+            Método de pago: {{ venta.metodo }}<br>
+            Cliente: {{ venta.cliente or 'Público General' }}
+            {% if venta.rfc_nit and venta.cliente_id != 1 %}<br>RFC: {{ venta.rfc_nit }}{% endif %}
+        </div>
+        {% if detalles|selectattr('antibiotico')|list %}
+        <div class="center small bold" style="margin-top:2mm">Venta de antibiótico con receta médica.</div>
+        {% if registro_ab %}
+        <div class="small" style="margin-top:1.5mm">
+            Paciente: {{ registro_ab.paciente_nombre|upper }}<br>
+            Médico: {{ registro_ab.medico_nombre }}<br>
+            Céd. Prof.: {{ registro_ab.medico_cedula }}{% if registro_ab.vale_salida %} · Con vale de salida{% endif %}
+        </div>
+        {% endif %}
+        {% endif %}
+
+        <div class="center bold" style="margin-top:4mm">¡GRACIAS POR SU COMPRA!</div>
+        <div class="center small">Conserve su ticket para cualquier aclaración.</div>
+    </div>
+
+    <script>
+        if (window.self !== window.top) document.body.classList.add('embedded');
+        // Se imprime solo cuando se abre directamente (en el POS el iframe lo imprime el padre)
+        window.addEventListener('load', function () {
+            if (window.self === window.top) { setTimeout(function () { window.print(); }, 400); }
+        });
+    </script>
+</body>
+</html>

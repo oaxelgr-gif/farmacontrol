@@ -1,0 +1,141 @@
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FarmaControl · Instalación en Windows 10</title>
+<style>
+  :root { --verde: #0e8a78; --gris: #4a5b66; --fondo: #f4f7f6; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Segoe UI", Arial, sans-serif; color: #17242b; background: var(--fondo); line-height: 1.55; }
+  main { max-width: 900px; margin: 0 auto; padding: 28px 22px 60px; }
+  h1 { color: var(--verde); margin: 0 0 4px; font-size: 1.9rem; }
+  h2 { margin: 34px 0 10px; padding-top: 14px; border-top: 2px solid #dfe8e5; font-size: 1.3rem; }
+  h2 span { display: inline-block; background: var(--verde); color: #fff; border-radius: 50%; width: 30px; height: 30px; text-align: center; line-height: 30px; margin-right: 8px; font-size: 1rem; }
+  pre { background: #10201c; color: #d7f5ec; padding: 12px 14px; border-radius: 10px; overflow-x: auto; font-size: .92rem; }
+  code { font-family: Consolas, "Courier New", monospace; }
+  p code, li code { background: #e5efec; padding: 1px 5px; border-radius: 4px; }
+  .nota { background: #fff7e6; border-left: 4px solid #e8961c; padding: 10px 14px; border-radius: 6px; margin: 12px 0; }
+  .ok { background: #e6f6f1; border-left: 4px solid var(--verde); padding: 10px 14px; border-radius: 6px; margin: 12px 0; }
+  table { border-collapse: collapse; width: 100%; margin: 10px 0; background: #fff; }
+  td, th { border: 1px solid #d5dfdc; padding: 7px 10px; text-align: left; vertical-align: top; }
+  th { background: #e5efec; }
+  .sub { color: var(--gris); }
+</style>
+</head>
+<body>
+<main>
+<h1>FarmaControl · Instalación en Windows 10</h1>
+<p class="sub">Esta computadora será el servidor: los demás equipos de la red (doctores, farmacéuticos, celulares) entran desde su navegador.</p>
+
+<div class="ok"><b>Qué trae esta instalación:</b> 1 usuario administrador (<code>admin</code> / <code>131004131004</code>), 3 productos de prueba (código de barras <code>0000000000001</code>, <code>…02</code> antibiótico, <code>…03</code>) y 2 pacientes de prueba (PACIENTE PRUEBA UNO y DOS). Todo lo demás (anaqueles base, métodos de pago, servicios y consultas del catálogo) viene igual que siempre.</div>
+
+<h2><span>0</span>Requisitos de la computadora</h2>
+<table>
+<tr><th>Requisito</th><th>Cómo revisarlo</th></tr>
+<tr><td>Windows 10 de 64 bits, versión <b>22H2</b> (compilación 19045) o Windows 11</td><td>Tecla Windows + R → escribe <code>winver</code> → Enter</td></tr>
+<tr><td>Mínimo <b>8 GB de RAM</b></td><td>Configuración → Sistema → Acerca de</td></tr>
+<tr><td><b>Virtualización habilitada</b></td><td>Administrador de tareas → Rendimiento → CPU → «Virtualización: Habilitada». Si dice Deshabilitada, actívala en la BIOS (Intel VT-x / AMD-V / SVM).</td></tr>
+<tr><td>Internet durante la instalación</td><td>Solo para descargar Docker y las imágenes la primera vez.</td></tr>
+</table>
+<div class="nota">Windows 10 ya terminó su soporte general de Microsoft. Docker Desktop puede seguir funcionando, pero conviene tener la PC con todas las actualizaciones (y, si se puede, migrar a Windows 11 más adelante).</div>
+
+<h2><span>1</span>Instalar WSL 2 (base que usa Docker)</h2>
+<p>Abre <b>PowerShell como administrador</b> (clic derecho en Inicio → «Windows PowerShell (Administrador)») y ejecuta:</p>
+<pre><code>wsl --install --no-distribution
+wsl --update
+wsl --set-default-version 2</code></pre>
+<p>Si <code>--no-distribution</code> marca error, usa solo <code>wsl --install</code>. <b>Reinicia la computadora</b> al terminar.</p>
+
+<h2><span>2</span>Instalar Docker Desktop</h2>
+<p>Otra vez en PowerShell como administrador:</p>
+<pre><code>winget install -e --id Docker.DockerDesktop --accept-package-agreements --accept-source-agreements</code></pre>
+<p>Si <code>winget</code> no existe, descarga el instalador de <b>docker.com/products/docker-desktop</b> y ejecútalo (marca «Use WSL 2 instead of Hyper-V»).</p>
+<p>Cierra sesión o reinicia. Abre <b>Docker Desktop</b>, acepta los términos (puedes omitir crear cuenta) y en <b>Settings → General</b> deja activado:</p>
+<ul>
+<li>«Start Docker Desktop when you sign in to your computer»</li>
+<li>«Use the WSL 2 based engine»</li>
+</ul>
+<p>Comprueba en PowerShell (normal):</p>
+<pre><code>docker --version
+docker compose version
+docker run --rm hello-world</code></pre>
+<p>El último debe mostrar «Hello from Docker!».</p>
+
+<h2><span>3</span>Copiar el sistema</h2>
+<p>Copia <code>FARMACONTROL_instalacion.zip</code> a la PC y descomprímelo en <code>C:\</code> (clic derecho → Extraer todo…). Debe quedar <code>C:\FARMACONTROL\</code>. O en PowerShell:</p>
+<pre><code>Expand-Archive -Path "$env:USERPROFILE\Downloads\FARMACONTROL_instalacion.zip" -DestinationPath C:\ -Force</code></pre>
+<div class="nota">No lo pongas en el Escritorio ni en OneDrive: la sincronización puede bloquear archivos.</div>
+
+<h2><span>4</span>Instalar y arrancar</h2>
+<p>Con Docker Desktop abierto («Engine running»), entra a <code>C:\FARMACONTROL</code> y da doble clic en <b><code>1_INSTALAR.bat</code></b>. La primera vez tarda de 5 a 15 minutos (descarga y construye las 3 imágenes: base de datos, sistema y API). Al terminar se abre el navegador en <code>http://localhost:5010</code>.</p>
+<p>Equivalente manual en PowerShell:</p>
+<pre><code>cd C:\FARMACONTROL
+docker compose up -d --build
+docker compose ps</code></pre>
+<p>Los tres servicios deben decir <b>running / healthy</b>.</p>
+
+<h2><span>5</span>Abrir el acceso a la red</h2>
+<ol>
+<li>Doble clic en <b><code>2_ABRIR_FIREWALL.bat</code></b> (pide permiso de administrador). Abre los puertos 5010 y 8000.</li>
+<li>Configuración → Red e Internet → Propiedades de tu red → perfil <b>Privada</b>.</li>
+<li>Doble clic en <b><code>VER_DIRECCION.bat</code></b>: muestra la dirección para los demás, por ejemplo <code>http://192.168.100.91:5010</code>.</li>
+<li>En el módem/router reserva esa IP para esta PC (opción «Reserva DHCP» o «IP fija») para que no cambie.</li>
+<li>Opcional: en el archivo <code>.env</code> cambia <code>API_PUBLIC_URL=http://localhost:8000</code> por <code>http://TU-IP:8000</code> y vuelve a ejecutar <code>1_INSTALAR.bat</code> (así el botón de Swagger funciona desde otros equipos).</li>
+</ol>
+<p>Comando equivalente del firewall (PowerShell administrador):</p>
+<pre><code>New-NetFirewallRule -DisplayName "FarmaControl" -Direction Inbound -Protocol TCP -LocalPort 5010,8000 -Action Allow -Profile Private,Domain</code></pre>
+
+<h2><span>6</span>Primer uso</h2>
+<ol>
+<li>Entra con <b>admin</b> / <b>131004131004</b> y cámbiale la contraseña en <b>Usuarios</b>.</li>
+<li>Crea los usuarios: farmacéuticos con rol <b>Farmacéutico</b>; doctores con rol <b>Administrador</b> (el módulo clínico es solo para ese rol).</li>
+<li>En <b>Clínica → Perfil médico</b> captura nombre, cédula, universidad, teléfono, WhatsApp y logos de la receta.</li>
+<li>Prueba una venta con los productos de prueba y una consulta con un paciente de prueba.</li>
+<li>Cuando todo funcione: elimina los 3 productos de prueba (Inventario) y da de baja los 2 pacientes (Clínica → Pacientes).</li>
+<li>Para que las recetas sigan tu numeración (ej. la última fue 1541), en PowerShell dentro de <code>C:\FARMACONTROL</code>:
+<pre><code>docker compose exec db sh -c 'mysql -uroot -p$MYSQL_ROOT_PASSWORD medicalife -e "ALTER TABLE recetas AUTO_INCREMENT = 1542"'</code></pre></li>
+</ol>
+
+<h2><span>7</span>Que siempre esté encendido</h2>
+<p>Los contenedores se reinician solos cuando Docker arranca. Para que la PC no se duerma (PowerShell administrador):</p>
+<pre><code>powercfg /change standby-timeout-ac 0
+powercfg /change hibernate-timeout-ac 0
+powercfg /change monitor-timeout-ac 15</code></pre>
+<p>Docker Desktop arranca al iniciar sesión: deja la sesión de Windows iniciada (o configura inicio de sesión automático con <code>netplwiz</code>).</p>
+
+<h2><span>8</span>Impresora de tickets</h2>
+<ol>
+<li>Instala el <b>controlador del fabricante</b> de la impresora térmica (modelo exacto: POS-80, Epson TM-T20, Xprinter…). No uses un controlador genérico, o imprimirá códigos raros.</li>
+<li>En sus preferencias elige papel de <b>80 mm</b>.</li>
+<li>Al imprimir desde Chrome/Edge: Márgenes «Ninguno», desactiva «Encabezados y pies de página».</li>
+</ol>
+<p>Cada computadora imprime en su propia impresora: instálala en la PC de caja que la tenga conectada.</p>
+
+<h2><span>9</span>Uso diario y respaldos</h2>
+<table>
+<tr><th>Archivo</th><th>Para qué</th></tr>
+<tr><td><code>INICIAR.bat</code></td><td>Enciende el sistema (normalmente arranca solo).</td></tr>
+<tr><td><code>DETENER.bat</code></td><td>Apaga el sistema. Los datos se conservan.</td></tr>
+<tr><td><code>ESTADO.bat</code></td><td>Muestra si todo está funcionando y los últimos mensajes.</td></tr>
+<tr><td><code>RESPALDO.bat</code></td><td>Guarda la base de datos en <code>respaldos\respaldo_FECHA.sql</code>. Hazlo al menos una vez por semana y copia el archivo a una USB o a la nube.</td></tr>
+<tr><td><code>VER_DIRECCION.bat</code></td><td>Muestra la dirección para los demás equipos.</td></tr>
+</table>
+<p><b>Restaurar un respaldo</b> (PowerShell en <code>C:\FARMACONTROL</code>, cambia el nombre del archivo):</p>
+<pre><code>docker compose cp .\respaldos\respaldo_20261006_1800.sql db:/tmp/r.sql
+docker compose exec db sh -c 'mysql -uroot -p$MYSQL_ROOT_PASSWORD medicalife &lt; /tmp/r.sql'</code></pre>
+<p><b>Actualizar</b> el sistema más adelante: reemplaza los archivos del programa (sin borrar <code>.env</code> ni <code>respaldos</code>) y ejecuta <code>1_INSTALAR.bat</code>. Los datos no se pierden.</p>
+<div class="nota"><b>Nunca</b> ejecutes <code>docker compose down -v</code>: la opción <code>-v</code> borra la base de datos.</div>
+
+<h2><span>?</span>Problemas comunes</h2>
+<table>
+<tr><th>Síntoma</th><th>Solución</th></tr>
+<tr><td>«WSL 2 installation is incomplete» / Docker no arranca</td><td>PowerShell administrador: <code>wsl --update</code> y reinicia.</td></tr>
+<tr><td>«Virtualization support not detected»</td><td>Activar virtualización en la BIOS (paso 0).</td></tr>
+<tr><td>Funciona en la PC pero no en otros equipos</td><td>Ejecuta <code>2_ABRIR_FIREWALL.bat</code>, red en «Privada», mismo Wi-Fi (no red de invitados) y usa la IP de <code>VER_DIRECCION.bat</code>.</td></tr>
+<tr><td>«port is already allocated»</td><td>Otro programa usa el 5010: cambia <code>WEB_PORT=5011</code> en <code>.env</code> y vuelve a instalar.</td></tr>
+<tr><td>La página no carga justo después de encender</td><td>Espera 1 minuto: la base de datos tarda en arrancar. Revisa con <code>ESTADO.bat</code>.</td></tr>
+</table>
+<p class="sub">El archivo <code>.env</code> trae claves únicas generadas para esta instalación. Guarda una copia en lugar seguro.</p>
+</main>
+</body>
+</html>

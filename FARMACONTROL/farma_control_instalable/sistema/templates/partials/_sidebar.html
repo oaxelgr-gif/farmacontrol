@@ -1,0 +1,25 @@
+{# Barra lateral (escritorio) / barra inferior (móvil). Las entradas vienen de farmacontrol/navigation.py #}
+<nav class="sidebar glass" aria-label="Navegación principal">
+    <a href="{{ inicio_url }}" class="brand" title="{{ negocio.nombre }}">
+        <img src="{{ url_for('static', filename='img/logo-icon.png') }}" alt="{{ negocio.nombre }}">
+    </a>
+
+    <div class="nav-rail">
+        {% for item in menu %}
+        <a href="{{ item.url }}" class="nav-item {{ 'active' if item.activo }}" title="{{ item.texto }}"
+           {% if item.activo %}aria-current="page"{% endif %}>
+            <i class="fas {{ item.icono }}"></i>
+            <span>{{ item.texto }}</span>
+        </a>
+        {% endfor %}
+    </div>
+
+    <div class="nav-bottom">
+        <a href="#" class="nav-item theme-toggle-nav" data-toggle-theme title="Cambiar tema">
+            <i class="fas fa-moon" data-theme-icon></i><span>Tema</span>
+        </a>
+        <a href="{{ url_for('auth.logout') }}" class="nav-item logout" title="Cerrar sesión">
+            <i class="fas fa-power-off"></i><span>Salir</span>
+        </a>
+    </div>
+</nav>

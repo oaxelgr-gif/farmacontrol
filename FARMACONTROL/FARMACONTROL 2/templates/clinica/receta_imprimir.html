@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Receta {{ p.nombre_completo|upper }} · Folio {{ '%06d'|format(r.id) }}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Merriweather:wght@700;900&family=Inter:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+{# Formato MEDICALIFE: hoja carta con dos recetas iguales (original y copia). ?copias=1 → solo media carta. #}
+{% set c = c or {} %}
+{% set folio_num = '%06d'|format(r.id) %}
+{% macro v(valor, unidad='') -%}{% if valor is not none and valor != '' %}<b>{{ valor }}</b>{% if unidad %} {{ unidad }}{% endif %}{% else %}<b>---</b>{% if unidad %} {{ unidad }}{% endif %}{% endif %}{%- endmacro %}
+<style>
+  @page { size: {{ '8.5in 11in' if copias == 2 else '8.5in 5.5in' }}; margin: 0; }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  :root { --teal: #1a9a9a; --teal-osc: #12807f; --tinta: #111; --rojo: #d32f2f; --linea: #cfd8d8; }
+  body { margin: 0; background: #e9eef0; font-family: "Inter", -apple-system, "Segoe UI", Arial, sans-serif; color: var(--tinta); }
+  .toolbar { display: flex; gap: 8px; justify-content: center; padding: 14px; flex-wrap: wrap; }
+  .toolbar a, .toolbar button { border: 1px solid rgba(0,0,0,.12); background: #fff; color: #0d1b24; padding: 9px 16px; border-radius: 999px; font-weight: 600; font-size: 13px; cursor: pointer; text-decoration: none; font-family: inherit; }
+  .toolbar .primary { background: linear-gradient(180deg, #12a58f, #0e8a78); color: #fff; border-color: transparent; }
+  .hoja { width: 8.5in; margin: 0 auto 18px; background: #fff; box-shadow: 0 10px 30px rgba(0,0,0,.12); }
+
+  .receta { width: 8.5in; height: 5.5in; padding: .2in .3in .2in; position: relative; display: flex; flex-direction: column; overflow: hidden; }
+  .receta + .receta { border-top: 1px dashed #b9c2c2; }
+
+  /* Encabezado */
+  .enc { display: grid; grid-template-columns: .85in 1fr .85in; align-items: center; gap: .1in; }
+  .enc .logo { width: .78in; height: .78in; object-fit: contain; }
+  .enc .logo.der { justify-self: end; }
+  .enc .emblema { justify-self: end; font-size: .62in; color: #111; line-height: 1; }
+  .enc .centro { text-align: center; }
+  .enc .medico { font-family: "Merriweather", Georgia, "Times New Roman", serif; font-weight: 900; color: var(--teal); font-size: 17.5pt; letter-spacing: .01em; line-height: 1.15; }
+  .enc .sub { font-size: 9pt; margin-top: 4px; }
+  .enc .sub + .sub { margin-top: 2px; }
+
+  /* Datos del paciente */
+  .datos { margin-top: .1in; font-size: 9.6pt; line-height: 1.55; }
+  .datos .fila { display: flex; flex-wrap: wrap; column-gap: 14px; align-items: baseline; }
+  .datos .fila .fecha { margin-left: auto; }
+  .datos .fila.vit { font-size: 8.7pt; column-gap: 10px; }
+  .k { color: var(--teal); font-weight: 600; }
+  .datos b { font-weight: 600; }
+  .alergia { color: var(--rojo); background: #fde7e7; font-weight: 700; padding: 0 4px; border-radius: 2px; }
+  hr.sep { border: 0; border-top: 1px solid var(--linea); margin: .07in 0; }
+
+  /* Cuerpo */
+  .dx { font-size: 10pt; margin: .02in 0 .06in; }
+  .dx i { font-style: italic; }
+  ol.meds { margin: 0; padding-left: .32in; font-size: 9.8pt; }
+  ol.meds li { margin-bottom: .05in; padding-left: 2px; }
+  ol.meds .nom { font-weight: 700; text-transform: uppercase; }
+  ol.meds .ind { display: block; margin-top: 2px; padding-left: 8px; border-left: 1.5px solid #c8d0d0; font-size: 8.6pt; text-transform: uppercase; color: #222; }
+  .gen { font-size: 9pt; margin-top: .02in; }
+  .gen span { text-transform: uppercase; }
+  .cita { font-size: 8.6pt; margin-top: .04in; }
+
+  .marca { position: absolute; left: 50%; top: 52%; transform: translate(-50%, -50%); width: 2.85in; opacity: .2; pointer-events: none; }
+  .cuerpo { flex: 1; position: relative; min-height: 0; overflow: hidden; }
+
+  /* Pie */
+  .pie { display: grid; grid-template-columns: 1fr 2.1in 1fr; align-items: end; gap: .1in; font-size: 7.6pt; }
+  .pie .dir { color: var(--teal); line-height: 1.45; }
+  .pie .firma { text-align: center; color: var(--teal); }
+  .pie .firma .linea { border-top: 1px solid #555; padding-top: 2px; }
+  .pie .folio { text-align: right; color: var(--rojo); font-weight: 800; font-size: 11pt; letter-spacing: .03em; }
+
+  @media print {
+    body { background: #fff; }
+    .toolbar { display: none; }
+    .hoja { margin: 0; box-shadow: none; }
+  }
+</style>
+</head>
+<body>
+<div class="toolbar">
+  <button class="primary" onclick="window.print()">Imprimir</button>
+  {% if copias == 2 %}<a href="?copias=1">Solo media carta</a>{% else %}<a href="?copias=2">Hoja carta (original + copia)</a>{% endif %}
+  {% if not r.venta_id %}<a href="{{ url_for('ventas.punto_venta', receta=r.id) }}">Surtir en farmacia</a>{% endif %}
+  <a href="{{ url_for('clinica.expediente', paciente_id=p.id) }}#recetas">Ir al expediente</a>
+  <a href="{{ url_for('clinica.perfil') }}">Editar encabezado y logos</a>
+</div>
+
+<div class="hoja">
+{% for copia in range(copias) %}
+<section class="receta">
+  <header class="enc">
+    {% if m.logo_izq %}<img class="logo" src="{{ url_for('clinica.perfil_logo', usuario_id=r.medico_id, lado='izq') }}" alt="" onerror="this.style.visibility='hidden'">{% else %}<span></span>{% endif %}
+    <div class="centro">
+      <div class="medico">{{ m.nombre_mostrar }}</div>
+      <div class="sub">{{ m.especialidad or '' }}{% if m.cedula_profesional %}{{ ' / ' if m.especialidad }}Ced. Prof. {{ m.cedula_profesional }}{% endif %}{% if m.cedula_especialidad %} / Ced. Esp. {{ m.cedula_especialidad }}{% endif %}</div>
+      {% if m.institucion %}<div class="sub">{{ m.institucion }}</div>{% endif %}
+    </div>
+    {% if m.logo_der %}<img class="logo der" src="{{ url_for('clinica.perfil_logo', usuario_id=r.medico_id, lado='der') }}" alt="" onerror="this.style.visibility='hidden'">
+    {% else %}<i class="fas fa-staff-snake emblema" aria-hidden="true"></i>{% endif %}
+  </header>
+
+  <div class="datos">
+    <div class="fila">
+      <span><span class="k">Paciente:</span> {{ p.nombre_completo|upper }}</span>
+      <span><span class="k">Edad:</span> {{ edad_de(p.fecha_nacimiento, r.fecha, True) or '---' }}</span>
+      <span><span class="k">Sexo:</span> {{ {'F': 'Femenino', 'M': 'Masculino', 'O': 'Otro'}.get(p.sexo, '---') }}</span>
+      <span class="fecha"><span class="k">Fecha:</span> {{ r.fecha.strftime('%d/%m/%Y') }}</span>
+    </div>
+    <div class="fila vit">
+      <span><span class="k">Peso:</span> {{ v(c.peso_kg|numero(1) if c.peso_kg else none, 'kg') }}</span>
+      <span><span class="k">Talla:</span> {{ v(c.talla_cm|numero(0) if c.talla_cm else none, 'cm') }}</span>
+      <span><span class="k">IMC:</span> {{ v(c.imc|numero(1) if c.imc else none) }}</span>
+      <span><span class="k">T.A.:</span> {{ v((c.ta_sistolica ~ '/' ~ c.ta_diastolica) if c.ta_sistolica else none) }}</span>
+      <span><span class="k">FC:</span> {{ v(c.frecuencia_cardiaca, 'lpm') }}</span>
+      <span><span class="k">FR:</span> {{ v(c.frecuencia_respiratoria, 'rpm') }}</span>
+      <span><span class="k">Temp:</span> {{ v(c.temperatura|numero(1) if c.temperatura else none, '°C') }}</span>
+      <span><span class="k">SPO2:</span> {{ v((c.saturacion_o2 ~ '%') if c.saturacion_o2 else none) }}</span>
+      <span><span class="k">Glucosa:</span> {{ v(c.glucosa_capilar) }}</span>
+    </div>
+    <div class="fila">
+      <span><span class="k">F.Nac:</span> <b>{{ p.fecha_nacimiento.strftime('%d/%m/%Y') if p.fecha_nacimiento else '---' }}</b></span>
+      <span class="k">/</span>
+      <span><span class="k">Alergias:</span> <span class="alergia">{{ (r.alergias|map(attribute='alergeno')|join(', ')|upper ~ '.') if r.alergias else 'NEGADAS.' }}</span></span>
+    </div>
+  </div>
+  <hr class="sep">
+
+  <div class="cuerpo">
+    <img class="marca" src="{{ url_for('static', filename='img/logo-transparente.png') }}" alt="">
+    <div class="dx"><span class="k">Dx:</span>
+      {% if r.diagnosticos %}<i>{% for d in r.diagnosticos %}{% if d.cie10 %}{{ d.cie10 }} - {% endif %}{{ d.descripcion }}{{ '; ' if not loop.last else '.' }}{% endfor %}</i>
+      {% else %}<i>{{ r.diagnostico or '---' }}</i>{% endif %}
+    </div>
+    <ol class="meds">
+      {% for x in r.medicamentos %}
+      {% set partes = [x.dosis, x.frecuencia, ('por ' ~ x.duracion) if x.duracion else none, x.indicaciones]|select|list %}
+      <li><span class="nom">{{ x.medicamento }}{% if x.presentacion %} {{ x.presentacion }}{% endif %}</span>
+        {% if partes %}<span class="ind">{{ ('Tomar ' if x.dosis and (x.via or 'Oral') == 'Oral' else ('Aplicar ' if x.dosis else '')) }}{{ partes|join(' ') }}{% if x.via and x.via != 'Oral' %} (vía {{ x.via|lower }}){% endif %}{% if x.cantidad %} · surtir {{ x.cantidad }}{% endif %}</span>{% endif %}
+      </li>
+      {% endfor %}
+    </ol>
+    {% if r.indicaciones_generales %}<hr class="sep"><div class="gen"><span class="k">Indicaciones Generales:</span>&nbsp; <span>{{ r.indicaciones_generales }}</span></div>{% endif %}
+    {% if r.proxima_cita %}<div class="cita"><span class="k">Próxima cita:</span> <b>{{ r.proxima_cita|fecha }}</b></div>{% endif %}
+  </div>
+
+  <footer class="pie">
+    <div class="dir">
+      {{ m.direccion or '' }}<br>
+      {% if m.telefono %}Tel: {{ m.telefono }}{% endif %}{% if m.whatsapp %}{{ ' / ' if m.telefono }}Whatsapp {{ m.whatsapp }}{% endif %}
+    </div>
+    <div class="firma"><div class="linea">Firma Médico</div></div>
+    <div class="folio">{{ folio_num }}</div>
+  </footer>
+</section>
+{% endfor %}
+</div>
+</body>
+</html>

@@ -74,13 +74,16 @@ services:
       FLASK_DEBUG: "0"
       API_URL: http://api:8000
       API_INTERNAL_TOKEN: ${API_INTERNAL_TOKEN:-farmacontrol-token-interno-cambiar}
-      API_PUBLIC_URL: http://localhost:${API_PORT:-8000}
+      API_PUBLIC_URL: ${API_PUBLIC_URL:-http://localhost:8000}
       FONDO_SUGERIDO: ${FONDO_SUGERIDO:-500}
       NOMBRE_NEGOCIO: ${NOMBRE_NEGOCIO:-MEDICALIFE}
       NOMBRE_SUCURSAL: ${NOMBRE_SUCURSAL:-Consultorio y Farmacia}
       TELEFONO_NEGOCIO: ${TELEFONO_NEGOCIO:-(55) 1234-5678}
       ESTACION_CAJA: ${ESTACION_CAJA:-ESTACION01}
       WEB_WORKERS: ${WEB_WORKERS:-3}
+      HOST_IP: ${HOST_IP:-}
+      WEB_PORT_PUBLICO: ${WEB_PORT:-5010}
+      API_PORT_PUBLICO: ${API_PORT:-8000}
     depends_on:
       db:
         condition: service_healthy

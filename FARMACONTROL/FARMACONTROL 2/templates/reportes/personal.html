@@ -1,0 +1,63 @@
+{% extends "reportes/_layout.html" %}
+{% import "partials/_macros.html" as ui with context %}
+{% block title %}Rendimiento del personal{% endblock %}
+{% block page_sub %}<p class="page-sub">Del {{ f_inicio|fecha }} al {{ f_fin|fecha }}</p>{% endblock %}
+
+{% block content %}
+<section class="card-glass glass reveal no-print" style="margin-bottom:20px">
+    <form method="GET" class="filter-bar">
+        {{ ui.date_range('inicio', f_inicio, 'fin', f_fin) }}
+        <div class="actions"><button class="btn btn-primary"><i class="fas fa-rotate"></i> Actualizar</button></div>
+    </form>
+</section>
+
+<section class="grid-stats reveal reveal-2">
+    {{ ui.stat('Ventas totales', total_ventas|numero, 'fa-receipt', 'accent') }}
+    {{ ui.stat('Importe vendido', total_vendido|money, 'fa-sack-dollar', 'blue') }}
+    {{ ui.stat('Promedio por vendedor', promedio_general|money, 'fa-user-check', 'purple') }}
+</section>
+
+<section class="grid-3-1 reveal reveal-3">
+    <div class="card-glass glass">
+        <div class="card-head"><h2 class="card-title"><span class="ico"><i class="fas fa-users"></i></span> Desempeño por usuario</h2></div>
+        <div class="table-wrap">
+            <table class="table" data-tabla="Rendimiento del personal">
+                <thead><tr><th>#</th><th>Usuario</th><th class="num">Ventas</th><th class="num">Importe</th><th class="num">Ticket prom.</th><th class="num">Días</th><th class="num">Cortes</th><th>Producto top</th></tr></thead>
+                <tbody>
+                {% for u in tabla %}
+                    <tr>
+                        <td class="fw-800 text-muted">{{ loop.index }}</td>
+                        <td>{{ ui.user_cell(u.nombre, '@' ~ u.usuario) }}</td>
+                        <td class="num">{{ u.num_ventas }}</td>
+                        <td class="num fw-800">{{ u.total_vendido|money }}</td>
+                        <td class="num text-2">{{ u.ticket_promedio|money }}</td>
+                        <td class="num">{{ u.dias_trabajados or 0 }}</td>
+                        <td class="num">{{ u.cortes_realizados or 0 }}</td>
+                        <td class="text-2"><span class="truncate d-inline-block" style="max-width:180px">{{ u.producto_top or '—' }}</span></td>
+                    </tr>
+                {% else %}
+                    {{ ui.empty_row(8, 'Sin datos en el periodo') }}
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="card-glass glass">
+        <div class="card-head"><h2 class="card-title"><span class="ico"><i class="fas fa-chart-pie"></i></span> Participación</h2></div>
+        <div class="chart-box"><canvas id="partChart"></canvas></div>
+    </div>
+</section>
+{% endblock %}
+
+{% block report_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var datos = {{ tabla|selectattr('num_ventas')|list|map(attribute='total_vendido')|map('num')|list|tojson }};
+    var nombres = {{ tabla|selectattr('num_ventas')|list|map(attribute='nombre')|list|tojson }};
+    crearGrafica('partChart', function (c) {
+        return { type: 'doughnut', data: { labels: nombres, datasets: [{ data: datos, backgroundColor: c.series, borderWidth: 0 }] },
+            options: { cutout: '62%', plugins: { legend: { position: 'bottom' }, tooltip: { callbacks: { label: function (x) { return x.label + ': ' + FC.money(x.parsed); } } } } } };
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,256 @@
+{% extends "layouts/base.html" %}
+{% block title %}Punto de venta{% endblock %}
+{% block body_class %}pos-page{% endblock %}
+{% block head %}<link rel="stylesheet" href="{{ url_for('static', filename='css/pos.css') }}">{% endblock %}
+
+{% block topbar %}
+<header class="topbar reveal" style="margin-bottom:16px">
+    <div>
+        <div class="page-eyebrow"><i class="fas fa-cash-register"></i> Punto de venta</div>
+        <h1 class="page-title">Nueva venta</h1>
+        <p class="page-sub" style="margin-top:8px">
+            {% if corte %}<span class="pill pill-success"><span class="dot pulse"></span> Caja abierta · corte #{{ corte.id }}</span>
+            {% else %}<span class="pill pill-warning" title="Se abrirá automáticamente con fondo $0 en la primera venta"><i class="fas fa-circle-info"></i> Sin caja abierta: se abrirá al cobrar</span>{% endif %}
+        </p>
+    </div>
+    <div class="topbar-actions">
+        <button type="button" class="btn btn-glass client-chip" onclick="POS.abrirClientes()" title="Cliente (F4)">
+            <i class="fas fa-user-tag"></i> <span id="client-name-display">PÚBLICO GENERAL</span>
+        </button>
+        {% include "partials/_user_pill.html" %}
+    </div>
+</header>
+{% endblock %}
+
+{% block content %}
+<div class="pos-grid">
+    <section class="pos-left">
+
+        <div class="quick reveal reveal-2">
+            <button class="quick-btn glass" onclick="POS.abrirSeleccion('productos')"><i class="fas fa-capsules text-accent"></i><span>Productos</span><kbd>F1</kbd></button>
+            <button class="quick-btn glass" onclick="POS.abrirSeleccion('procedimientos')"><i class="fas fa-syringe text-success"></i><span>Servicios</span><kbd>F2</kbd></button>
+            <button class="quick-btn glass" onclick="POS.abrirSeleccion('consultas')"><i class="fas fa-user-doctor text-info"></i><span>Consultas</span><kbd>F3</kbd></button>
+            <button class="quick-btn glass" onclick="POS.abrirClientes()"><i class="fas fa-address-book" style="color:var(--purple)"></i><span>Clientes</span><kbd>F4</kbd></button>
+            <button class="quick-btn glass" onclick="POS.surtirReceta()" title="Cargar receta del consultorio por folio"><i class="fas fa-prescription" style="color:var(--danger)"></i><span>Receta</span><kbd>F6</kbd></button>
+        </div>
+
+        <div id="cuenta-paciente" class="cuenta glass reveal" hidden></div>
+
+
+        <div class="card-glass glass cart reveal reveal-3">
+            <div class="card-head" style="margin-bottom:10px">
+                <h2 class="card-title"><span class="ico"><i class="fas fa-basket-shopping"></i></span> Artículos <span class="pill pill-accent" id="items-count">0</span></h2>
+                <button class="btn btn-ghost btn-sm" onclick="POS.vaciar()" id="btn-vaciar" disabled><i class="fas fa-trash-can"></i> Vaciar</button>
+            </div>
+            <div class="table-wrap">
+                <table class="table">
+                    <thead><tr><th>Descripción</th><th class="text-center">Cantidad</th><th class="num">Precio</th><th class="num">Subtotal</th><th></th></tr></thead>
+                    <tbody id="carrito-table"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="scan scan-abajo glass">
+            <i class="fas fa-barcode scan-ico"></i>
+            <input type="text" id="barcode-input" class="scan-input" placeholder="Escanea el código o escribe el nombre del producto…" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" name="fc-scan-codigo" data-form-type="other" data-lpignore="true" autofocus>
+            <kbd class="d-none d-md-inline-block">Enter</kbd>
+        </div>
+    </section>
+
+    <aside class="pos-right">
+        <div class="card-glass glass summary reveal reveal-3">
+            <div class="d-flex justify-content-between align-items-center" style="margin-bottom:12px">
+                <h2 class="card-title" style="font-size:1rem"><span class="ico"><i class="fas fa-file-invoice-dollar"></i></span> Resumen</h2>
+                <span class="text-muted" style="font-size:.8rem" id="summary-units">0 unidades</span>
+            </div>
+            <div class="summary-items" id="ticket-items"></div>
+            <div id="antibiotico-box" class="alert alert-warning" style="display:none;margin-top:12px">
+                <i class="fas fa-prescription-bottle-medical text-warning"></i>
+                <div style="font-size:.84rem"><b>Contiene antibiótico(s).</b><br>Verifica la receta médica antes de cobrar.</div>
+            </div>
+            <div class="summary-total">
+                <span>Total</span>
+                <b id="total-ticket">$0.00</b>
+            </div>
+            <button class="btn btn-primary btn-lg btn-block pay-btn" onclick="POS.cobrar()" id="btn-cobrar" disabled>
+                <i class="fas fa-credit-card"></i> Cobrar <kbd style="background:rgba(255,255,255,.25);color:#fff;border:0">F12</kbd>
+            </button>
+        </div>
+    </aside>
+</div>
+{% endblock %}
+
+{% block modals %}
+<!-- Selección de productos / servicios / consultas -->
+<div class="modal fade" id="modalSeleccion" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modal-title-dynamic">Buscar</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">&times;</button>
+            </div>
+            <div style="padding:14px 22px 6px">
+                <div class="input-icon"><i class="fas fa-magnifying-glass"></i>
+                    <input type="search" id="filtro-modal" class="form-control" placeholder="Filtrar por nombre o código…" autocomplete="off">
+                </div>
+            </div>
+            <div class="modal-body" id="modal-body-items" style="padding-top:8px"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Clientes -->
+<!-- Control de antibióticos (mismo orden que el control anterior del punto de venta) -->
+<div class="modal fade" id="modalAntibiotico" tabindex="-1" aria-hidden="true" data-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:680px">
+        <form class="modal-content" id="formAntibiotico" autocomplete="off">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-prescription text-danger"></i> Control de Antibióticos</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar"><span aria-hidden="true">&times;</span></button>
+            </div>
+            <div class="modal-body ab-body">
+                <div class="ab-grid">
+                    <div class="form-group ab-auto ab-cedula">
+                        <label>Cédula *</label>
+                        <input name="medico_cedula" class="form-control mono" required placeholder="Cédula profesional">
+                        <div class="ab-sugerencias" data-sug="cedula"></div>
+                    </div>
+                    <div class="form-group ab-auto ab-nombre">
+                        <label>Nombre *</label>
+                        <input name="medico_nombre" class="form-control" required placeholder="Nombre del médico">
+                        <div class="ab-sugerencias" data-sug="medico"></div>
+                    </div>
+                    <div class="form-group ab-full">
+                        <label>Domicilio</label>
+                        <input name="medico_domicilio" class="form-control" placeholder="Domicilio del médico">
+                    </div>
+                    <div class="form-group ab-inst">
+                        <label>Institución</label>
+                        <input name="institucion" class="form-control" list="abInstituciones" placeholder="Institución que expidió la receta">
+                    </div>
+                    <div class="form-group ab-vale">
+                        <label class="ab-check"><input type="checkbox" name="vale_salida" value="SI"> Vale de salida</label>
+                    </div>
+                    <div class="form-group ab-recoge">
+                        <label>Se recoge receta</label>
+                        <div class="ab-radios">
+                            <label><input type="radio" name="destino_receta" value="retenida" checked> SÍ</label>
+                            <label><input type="radio" name="destino_receta" value="sellada"> NO</label>
+                        </div>
+                    </div>
+                    <div class="form-group ab-sust">
+                        <label>Sustancia</label>
+                        <div class="ab-sustancia" id="abProductos"></div>
+                    </div>
+                    <div class="form-group ab-auto ab-full">
+                        <label>Nombre de paciente * <span id="abPacienteTag" class="ab-tag"></span></label>
+                        <input name="paciente_nombre" class="form-control" required placeholder="Busca un paciente de la clínica o escribe el nombre">
+                        <input type="hidden" name="paciente_id">
+                        <div class="ab-sugerencias" data-sug="paciente"></div>
+                    </div>
+                </div>
+                <details class="ab-mas">
+                    <summary>Más datos de la receta (opcional)</summary>
+                    <div class="row" style="margin-top:10px">
+                        <div class="col-sm-4 form-group"><label>Folio de receta</label><input name="receta_folio" class="form-control mono"></div>
+                        <div class="col-sm-4 form-group"><label>Fecha de receta</label><input type="date" name="receta_fecha" class="form-control"></div>
+                        <div class="col-sm-4 form-group"><label>Observaciones</label><input name="observaciones" class="form-control"></div>
+                    </div>
+                    <input type="hidden" name="receta_clinica_id">
+                </details>
+            </div>
+            <div class="modal-footer ab-botones">
+                <button type="submit" class="btn btn-primary btn-lg" accesskey="a"><span><u>A</u>ceptar</span></button>
+                <button type="button" class="btn btn-glass btn-lg" data-dismiss="modal" accesskey="c"><span><u>C</u>ancelar</span></button>
+            </div>
+        </form>
+    </div>
+</div>
+<datalist id="abInstituciones"><option value="Consultorio particular"><option value="IMSS"><option value="ISSSTE"><option value="Secretaría de Salud"><option value="Hospital privado"><option value="Consultorio adyacente a farmacia"></datalist>
+
+<div class="modal fade" id="modalClientes" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div><h5 class="modal-title">Clientes</h5><div class="text-muted" style="font-size:.82rem">Selecciona el cliente de la venta</div></div>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">&times;</button>
+            </div>
+            <div style="padding:14px 22px 6px" class="d-flex" >
+                <div class="input-icon" style="flex:1;margin-right:10px"><i class="fas fa-magnifying-glass"></i>
+                    <input type="search" id="filtro-cliente" class="form-control" placeholder="Nombre, RFC o teléfono…" autocomplete="off">
+                </div>
+                <button class="btn btn-primary" onclick="POS.nuevoCliente()"><i class="fas fa-user-plus"></i> Nuevo</button>
+            </div>
+            <div class="modal-body" id="modal-body-clientes" style="min-height:260px;padding-top:8px"></div>
+            <div class="modal-footer">
+                <button class="btn btn-glass btn-block" onclick="POS.seleccionarCliente(null, 'PÚBLICO GENERAL')"><i class="fas fa-user-slash"></i> Restablecer a público general</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Método de pago -->
+<div class="modal fade" id="modalMetodoPago" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-body text-center" style="padding:30px">
+                <div class="text-muted fw-700" style="font-size:.78rem;text-transform:uppercase;letter-spacing:.06em">Total a pagar</div>
+                <div class="hero-amount text-accent" id="modal-total-display" style="margin:6px 0 22px">$0.00</div>
+                <div class="pay-methods">
+                    {% for m in metodos %}
+                    <button type="button" class="pay-method glass" onclick="POS.elegirMetodo({{ m.id }})">
+                        <i class="fas {{ icono_metodo(m.nombre) }}"></i><span>{{ m.nombre }}</span>
+                    </button>
+                    {% endfor %}
+                </div>
+                <button class="btn btn-ghost" data-dismiss="modal" style="margin-top:16px">Cancelar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Ticket -->
+<div class="modal fade" id="modalTicket" tabindex="-1" data-backdrop="static" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div><h5 class="modal-title"><i class="fas fa-circle-check text-success"></i> Venta registrada</h5>
+                    <div class="text-muted" style="font-size:.82rem" id="ticket-resumen"></div></div>
+            </div>
+            <div class="modal-body" style="padding:12px">
+                <div id="cambio-box" class="text-center" style="display:none;margin-bottom:10px">
+                    <div class="text-muted fw-700" style="font-size:.75rem;text-transform:uppercase">Cambio a entregar</div>
+                    <div class="hero-amount text-success" id="cambio-display">$0.00</div>
+                </div>
+                <iframe id="ticket-iframe" title="Ticket de venta"></iframe>
+            </div>
+            <div class="modal-footer d-flex" style="gap:10px">
+                <button type="button" class="btn btn-glass" onclick="POS.imprimirTicket()"><i class="fas fa-print"></i> Imprimir</button>
+                <button type="button" class="btn btn-primary" style="flex:1" onclick="POS.nuevaVenta()">Nueva venta <kbd style="background:rgba(255,255,255,.25);color:#fff;border:0">F12</kbd></button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+window.POS_CONFIG = {
+    metodos: {{ metodos|tojson }},
+    cuentaInicial: {{ cuenta_inicial|tojson }},
+    urls: {
+        buscar: "{{ url_for('api.buscar_producto') }}",
+        items: "{{ url_for('api.api_get_items', tipo='__T__') }}",
+        clientes: "{{ url_for('api.api_get_clientes') }}",
+        nuevoCliente: "{{ url_for('api.api_nuevo_cliente') }}",
+        procesar: "{{ url_for('api.api_procesar_venta') }}",
+        abProductos: "{{ url_for('api.antibioticos_productos') }}",
+        abMedicos: "{{ url_for('api.antibioticos_medicos') }}",
+        abPacientes: "{{ url_for('api.antibioticos_pacientes') }}",
+        cuenta: "{{ url_for('api.cuenta_paciente') }}",
+        ticket: "{{ url_for('ventas.reimprimir_ticket', venta_id=0) }}"
+    }
+};
+</script>
+<script src="{{ url_for('static', filename='js/pos.js') }}"></script>
+{% endblock %}

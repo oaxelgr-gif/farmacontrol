@@ -1,0 +1,228 @@
+{% extends "reportes/_layout.html" %}
+{% import "partials/_macros.html" as ui with context %}
+{% block title %}Control de antibióticos{% endblock %}
+{% set periodo = 'Del ' ~ (fecha_inicio|fecha) ~ ' al ' ~ (fecha_fin|fecha) %}
+{% block page_sub %}<p class="page-sub">{{ periodo }} · Control sanitario sin importes. Cada tabla se filtra, imprime y exporta por separado.</p>{% endblock %}
+{% block report_actions %}<a class="btn btn-glass no-print" href="{{ url_for('reportes.antibioticos', fecha_inicio=fecha_inicio, fecha_fin=fecha_fin, usuario_id=usuario_id, producto_id=producto_id, tipo=tipo, q=q, formato='csv') }}" title="Todo el periodo en un solo archivo"><i class="fas fa-file-csv"></i> Bitácora completa (CSV)</a>{% endblock %}
+
+{% block content %}
+<section class="card-glass glass reveal no-print" style="margin-bottom:16px">
+    <form method="GET" class="filter-bar">
+        {{ ui.date_range('fecha_inicio', fecha_inicio, 'fecha_fin', fecha_fin) }}
+        <div class="form-group">
+            <label>Gestionó</label>
+            <select name="usuario_id" class="form-control">
+                <option value="">Todos</option>
+                {% for u in usuarios %}<option value="{{ u.id }}" {{ 'selected' if u.id|string == usuario_id }}>{{ u.nombre }}</option>{% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Antibiótico</label>
+            <select name="producto_id" class="form-control">
+                <option value="">Todos</option>
+                {% for a in antibioticos %}<option value="{{ a.id }}" {{ 'selected' if a.id|string == producto_id }}>{{ a.nombre }}</option>{% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Tipo</label>
+            <select name="tipo" class="form-control">
+                <option value="">Todos</option>
+                {% for t in tipos %}<option {{ 'selected' if t == tipo }}>{{ t }}</option>{% endfor %}
+            </select>
+        </div>
+        <div class="actions">
+            <button class="btn btn-primary"><i class="fas fa-filter"></i> Aplicar periodo</button>
+            <a class="btn btn-glass" href="{{ url_for('reportes.antibioticos') }}">Limpiar</a>
+        </div>
+    </form>
+</section>
+
+<section class="grid-stats reveal reveal-2">
+    {{ ui.stat('Dispensaciones', r.dispensaciones, 'fa-receipt', 'purple', 'ventas con antibiótico', '#vendidos') }}
+    {{ ui.stat('Unidades', r.unidades|numero, 'fa-pills', 'accent') }}
+    {{ ui.stat('Médicos', r.medicos, 'fa-user-doctor', 'info', 'ver tabla', '#medicos') }}
+    {{ ui.stat('Pacientes', r.pacientes, 'fa-hospital-user', 'blue', 'ver tabla', '#pacientes') }}
+    {{ ui.stat('Sin registro de receta', r.sin_registro, 'fa-triangle-exclamation', 'danger' if r.sin_registro else 'success', 'ver ventas' if r.sin_registro else 'todo registrado', '#sinregistro' if r.sin_registro else None) }}
+</section>
+
+<nav class="seccion-nav glass no-print" aria-label="Tablas del reporte">
+    <a href="#vendidos"><i class="fas fa-pills"></i> Antibióticos vendidos <span class="pill pill-purple">{{ registros|length }}</span></a>
+    <a href="#medicos"><i class="fas fa-user-doctor"></i> Médicos que expidieron <span class="pill pill-info">{{ r.por_medico|length }}</span></a>
+    <a href="#pacientes"><i class="fas fa-hospital-user"></i> Pacientes <span class="pill pill-info">{{ r.por_paciente|length }}</span></a>
+    <a href="#compuestos"><i class="fas fa-flask-vial"></i> Por compuesto <span class="pill pill-neutral">{{ r.compuestos|length }}</span></a>
+    <a href="#gestiono"><i class="fas fa-user-nurse"></i> Quién lo gestionó <span class="pill pill-neutral">{{ r.por_usuario|length }}</span></a>
+    {% if r.sin_registro %}<a href="#sinregistro"><i class="fas fa-triangle-exclamation text-danger"></i> Sin registro <span class="pill pill-danger">{{ r.sin_registro }}</span></a>{% endif %}
+</nav>
+
+{# 1 · Bitácora #}
+<section class="card-glass glass seccion-tabla" id="vendidos">
+    <div class="card-head"><h2 class="card-title"><span class="ico"><i class="fas fa-pills"></i></span> Antibióticos vendidos</h2>
+        <span class="text-muted" style="font-size:.82rem">Una fila por antibiótico dispensado · el médico se ve completo en cada fila</span></div>
+    <div class="table-wrap table-scroll" style="max-height:640px">
+        <table class="table bitacora-ab" id="tablaVendidos" data-tabla="Control de antibióticos · antibióticos vendidos" data-subtitulo="{{ periodo }}" data-orientacion="landscape">
+            <thead><tr>
+                <th>Fecha</th><th>Folio</th><th>Compuesto</th><th>Producto</th><th data-filtro>Tipo</th><th>Lote</th><th>Caducidad</th><th class="num">Cant.</th>
+                <th>Paciente</th><th>Médico</th><th data-filtro>Cédula</th><th>Domicilio del médico</th><th data-filtro>Institución</th>
+                <th data-filtro>Se recoge receta</th><th data-filtro>Vale de salida</th><th data-filtro>Gestionó</th>
+            </tr></thead>
+            <tbody>
+            {% for x in registros %}
+                <tr class="{{ 'alerta' if not x.registro_id }}">
+                    <td class="text-2" data-export="{{ x.fecha|fecha_hora }}">{{ x.fecha|fecha_hora }}</td>
+                    <td><a class="mono" href="{{ url_for('ventas.ver_detalle_venta', venta_id=x.venta_id) }}">{{ x.folio }}</a></td>
+                    <td class="fw-700">{{ x.compuesto|upper }}</td>
+                    <td class="text-2">{{ x.producto }}</td>
+                    <td>{{ x.tipo_antibiotico or 'Sin clasificar' }}</td>
+                    <td class="mono">{{ x.lote or '' }}</td>
+                    <td>{{ x.caducidad|fecha if x.caducidad else '' }}</td>
+                    <td class="num fw-800">{{ x.cantidad }}</td>
+                    {% if x.registro_id %}
+                    <td data-export="{{ x.paciente_nombre|upper }}{{ (' (' ~ x.expediente ~ ')') if x.expediente }}"><b>{{ x.paciente_nombre|upper }}</b>{% if x.paciente_id %}<br><a class="pill pill-success" href="{{ url_for('clinica.expediente', paciente_id=x.paciente_id) }}">{{ x.expediente }}</a>{% endif %}</td>
+                    <td>{{ x.medico_nombre }}</td>
+                    <td class="mono">{{ x.medico_cedula }}</td>
+                    <td class="text-2">{{ x.medico_domicilio or '' }}</td>
+                    <td>{{ x.institucion or '' }}</td>
+                    <td>{{ 'SÍ' if x.destino_receta == 'retenida' else 'NO' }}</td>
+                    <td>{{ 'SÍ' if x.vale_salida else 'NO' }}</td>
+                    {% else %}
+                    <td class="alerta" data-export="SIN REGISTRO DE RECETA">Sin registro de receta</td><td></td><td></td><td></td><td></td><td></td><td></td>
+                    {% endif %}
+                    <td>{{ x.gestiono }}</td>
+                </tr>
+            {% else %}
+                {{ ui.empty_row(16, 'No hay dispensación de antibióticos en el periodo', '', 'fa-pills') }}
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+{# 2 · Médicos #}
+<section class="card-glass glass seccion-tabla" id="medicos">
+    <div class="card-head"><h2 class="card-title"><span class="ico"><i class="fas fa-user-doctor"></i></span> Médicos que expidieron recetas</h2>
+        <span class="text-muted" style="font-size:.82rem">«Ver» muestra en la tabla de arriba todo lo que se dispensó con sus recetas</span></div>
+    <div class="table-wrap">
+        <table class="table" data-tabla="Control de antibióticos · médicos que expidieron" data-subtitulo="{{ periodo }}" data-orientacion="landscape">
+            <thead><tr><th>Médico</th><th>Cédula</th><th>Domicilio</th><th data-filtro>Institución</th><th class="num">Recetas</th><th class="num">Unidades</th>
+                <th>Antibióticos recetados</th><th>Pacientes</th><th>Última</th><th data-no-export class="no-print"></th></tr></thead>
+            <tbody>
+            {% for m in r.por_medico %}
+                <tr>
+                    <td class="fw-700">{{ m.nombre }}</td><td class="mono">{{ m.cedula }}</td><td class="text-2">{{ m.domicilio or '' }}</td><td>{{ m.institucion or '' }}</td>
+                    <td class="num fw-800">{{ m.recetas }}</td><td class="num">{{ m.unidades }}</td>
+                    <td data-export="{{ m.compuestos|join(', ') }}">{{ m.compuestos|join(', ') }}</td>
+                    <td data-export="{{ m.pacientes|join(', ') }}">{{ m.pacientes|length }} <span class="cell-sub">· {{ m.pacientes[:3]|join(', ') }}{{ '…' if m.pacientes|length > 3 }}</span></td>
+                    <td>{{ m.ultima|fecha }}</td>
+                    <td class="no-print"><button type="button" class="btn btn-ghost btn-sm" data-ver="{{ m.cedula }}"><i class="fas fa-eye"></i> Ver</button></td>
+                </tr>
+            {% else %}{{ ui.empty_row(10, 'Sin recetas registradas en el periodo', '', 'fa-user-doctor') }}{% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+{# 3 · Pacientes #}
+<section class="card-glass glass seccion-tabla" id="pacientes">
+    <div class="card-head"><h2 class="card-title"><span class="ico"><i class="fas fa-hospital-user"></i></span> Pacientes</h2></div>
+    <div class="table-wrap">
+        <table class="table" data-tabla="Control de antibióticos · pacientes" data-subtitulo="{{ periodo }}" data-orientacion="landscape">
+            <thead><tr><th>Paciente</th><th data-filtro>Origen</th><th class="num">Dispensaciones</th><th class="num">Unidades</th><th>Antibióticos</th><th>Médicos</th><th>Última</th><th data-no-export class="no-print"></th></tr></thead>
+            <tbody>
+            {% for p in r.por_paciente %}
+                <tr>
+                    <td class="fw-700">{{ p.nombre }}</td>
+                    <td data-export="{{ ('Clínica ' ~ p.expediente) if p.paciente_id else 'Externo' }}">{% if p.paciente_id %}<a class="pill pill-success" href="{{ url_for('clinica.expediente', paciente_id=p.paciente_id) }}">Clínica · {{ p.expediente }}</a>{% else %}Externo{% endif %}</td>
+                    <td class="num fw-800">{{ p.ventas }}</td><td class="num">{{ p.unidades }}</td>
+                    <td>{{ p.compuestos|join(', ') }}</td><td class="text-2">{{ p.medicos|join(', ') }}</td><td>{{ p.ultima|fecha }}</td>
+                    <td class="no-print"><button type="button" class="btn btn-ghost btn-sm" data-ver="{{ p.nombre }}"><i class="fas fa-eye"></i> Ver</button></td>
+                </tr>
+            {% else %}{{ ui.empty_row(8, 'Sin pacientes registrados en el periodo', '', 'fa-hospital-user') }}{% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+{# 4 · Compuestos #}
+<section class="grid-2 seccion-tabla" id="compuestos">
+    <div class="card-glass glass">
+        <div class="card-head"><h2 class="card-title"><span class="ico"><i class="fas fa-flask-vial"></i></span> Por compuesto</h2></div>
+        <div class="table-wrap">
+            <table class="table" data-tabla="Control de antibióticos · por compuesto" data-subtitulo="{{ periodo }}">
+                <thead><tr><th>Compuesto</th><th data-filtro>Tipo</th><th>Lotes</th><th class="num">Dispensaciones</th><th class="num">Unidades</th></tr></thead>
+                <tbody>
+                {% for c in r.compuestos %}
+                    <tr><td class="fw-700">{{ c.compuesto|upper }}</td><td>{{ c.tipo or 'Sin clasificar' }}</td><td class="mono text-2">{{ c.lotes|join(', ') }}</td>
+                        <td class="num">{{ c.ventas }}</td><td class="num fw-800">{{ c.unidades }}</td></tr>
+                {% else %}{{ ui.empty_row(5, 'Sin datos') }}{% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="card-glass glass">
+        <div class="card-head"><h2 class="card-title"><span class="ico"><i class="fas fa-layer-group"></i></span> Unidades por tipo de antibiótico</h2></div>
+        <div class="chart-box sm"><canvas id="tipoChart"></canvas></div>
+    </div>
+</section>
+
+{# 5 · Quién lo gestionó #}
+<section class="card-glass glass seccion-tabla" id="gestiono">
+    <div class="card-head"><h2 class="card-title"><span class="ico"><i class="fas fa-user-nurse"></i></span> Quién lo gestionó</h2></div>
+    <div class="table-wrap">
+        <table class="table" data-tabla="Control de antibióticos · quién lo gestionó" data-subtitulo="{{ periodo }}">
+            <thead><tr><th>Usuario</th><th class="num">Dispensaciones</th><th class="num">Unidades</th><th class="num">Ventas sin registro</th><th>Última</th><th data-no-export class="no-print"></th></tr></thead>
+            <tbody>
+            {% for u in r.por_usuario %}
+                <tr class="{{ 'alerta' if u.sin_registro }}"><td class="fw-700">{{ u.usuario }}</td><td class="num">{{ u.ventas }}</td><td class="num fw-800">{{ u.unidades }}</td>
+                    <td class="num {{ 'alerta' if u.sin_registro }}">{{ u.sin_registro }}</td><td>{{ u.ultima|fecha_hora }}</td>
+                    <td class="no-print"><button type="button" class="btn btn-ghost btn-sm" data-ver="{{ u.usuario }}"><i class="fas fa-eye"></i> Ver</button></td></tr>
+            {% else %}{{ ui.empty_row(6, 'Sin datos') }}{% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+{# 6 · Sin registro #}
+{% if r.sin_registro %}
+<section class="card-glass glass seccion-tabla" id="sinregistro">
+    <div class="card-head"><h2 class="card-title"><span class="ico"><i class="fas fa-triangle-exclamation"></i></span> Ventas de antibiótico sin registro de receta</h2>
+        <span class="text-muted" style="font-size:.82rem">Normalmente son ventas hechas antes de activar el control</span></div>
+    <div class="table-wrap table-scroll" style="max-height:420px">
+        <table class="table" data-tabla="Control de antibióticos · ventas sin registro de receta" data-subtitulo="{{ periodo }}">
+            <thead><tr><th>Fecha</th><th>Folio</th><th>Antibiótico</th><th>Lote</th><th class="num">Cant.</th><th data-filtro>Gestionó</th></tr></thead>
+            <tbody>
+            {% for x in r.sin_registro_filas %}
+                <tr class="alerta"><td>{{ x.fecha|fecha_hora }}</td><td><a class="mono" href="{{ url_for('ventas.ver_detalle_venta', venta_id=x.venta_id) }}">{{ x.folio }}</a></td>
+                    <td class="fw-700">{{ x.compuesto|upper }}</td><td class="mono">{{ x.lote or '' }}</td><td class="num">{{ x.cantidad }}</td><td>{{ x.gestiono }}</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endif %}
+{% endblock %}
+
+{% block report_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var tipos = {{ r.por_tipo|map(attribute=0)|list|tojson }};
+    var unidades = {{ r.por_tipo|map(attribute=1)|list|tojson }};
+    crearGrafica('tipoChart', function (c) {
+        return { type: 'bar', data: { labels: tipos, datasets: [{ data: unidades, backgroundColor: c.series[2], borderRadius: 8, maxBarThickness: 24 }] },
+            options: { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, ticks: { precision: 0 } }, y: { grid: { display: false } } } } };
+    });
+    // «Ver»: filtra la tabla de antibióticos vendidos por médico, paciente o usuario
+    document.querySelectorAll('[data-ver]').forEach(function (b) {
+        b.addEventListener('click', function () {
+            var t = FCTablas.de('#tablaVendidos'); if (!t) return;
+            t.buscar(b.getAttribute('data-ver'));
+            document.getElementById('vendidos').scrollIntoView({ behavior: 'smooth' });
+        });
+    });
+});
+</script>
+<style>
+.bitacora-ab td { font-size: .82rem; }
+.bitacora-ab th { white-space: nowrap; }
+.bitacora-ab tr.alerta td { background: rgba(229,72,77,.05); }
+</style>
+{% endblock %}

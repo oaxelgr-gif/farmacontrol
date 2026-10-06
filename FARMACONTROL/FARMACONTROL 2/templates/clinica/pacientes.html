@@ -1,0 +1,66 @@
+{% extends "clinica/_layout.html" %}
+{% import "partials/_macros.html" as ui with context %}
+{% block title %}Pacientes{% endblock %}
+{% block page_title %}Pacientes{% endblock %}
+{% block page_sub %}<p class="page-sub">Registro y expediente clínico de cada paciente.</p>{% endblock %}
+
+{% block clinica %}
+<section class="card-glass glass reveal reveal-2">
+    <form method="GET" class="filter-bar" style="margin-bottom:18px">
+        <div class="form-group" style="flex:3 1 260px">
+            <label>Buscar paciente</label>
+            <div class="input-icon"><i class="fas fa-magnifying-glass"></i>
+                <input type="search" name="q" class="form-control" value="{{ q }}" placeholder="Nombre, expediente, CURP o teléfono…" autofocus>
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Padecimiento</label>
+            <input type="text" name="padecimiento" class="form-control" value="{{ padecimiento }}" list="lista-padecimientos" placeholder="Ej. Diabetes">
+            <datalist id="lista-padecimientos">{% for p in padecimientos %}<option value="{{ p.nombre }}">{{ p.n }} paciente(s)</option>{% endfor %}</datalist>
+        </div>
+        <div class="form-group" style="flex:0 1 150px">
+            <label>Sexo</label>
+            <select name="sexo" class="form-control"><option value="">Todos</option>{% for k, v in SEXOS.items() %}<option value="{{ k }}" {{ 'selected' if sexo == k }}>{{ v }}</option>{% endfor %}</select>
+        </div>
+        <div class="form-group" style="flex:0 1 170px">
+            <label>Ordenar por</label>
+            <select name="orden" class="form-control" data-autosubmit>
+                {% for k, v in [('recientes','Última visita'),('nombre','Apellido'),('visitas','Más visitas'),('nuevos','Registro reciente')] %}<option value="{{ k }}" {{ 'selected' if orden == k }}>{{ v }}</option>{% endfor %}
+            </select>
+        </div>
+        <div class="actions">
+            <button class="btn btn-primary"><i class="fas fa-filter"></i> Buscar</button>
+            {% if q or padecimiento or sexo %}<a class="btn btn-glass" href="{{ url_for('clinica.pacientes') }}">Limpiar</a>{% endif %}
+        </div>
+    </form>
+
+    <div class="table-wrap">
+        <table class="table">
+            <thead><tr><th>Paciente</th><th>Edad / sexo</th><th>Contacto</th><th>Padecimientos</th><th class="num">Visitas</th><th>Última visita</th><th>Próxima cita</th><th class="num"></th></tr></thead>
+            <tbody>
+            {% for p in pacientes %}
+                <tr>
+                    <td>
+                        <a href="{{ url_for('clinica.expediente', paciente_id=p.id) }}" style="color:inherit">{{ ui.user_cell(p.nombre_completo, p.expediente) }}</a>
+                        {% if p.alergias %}<span class="pill pill-danger" style="margin-top:6px"><i class="fas fa-triangle-exclamation"></i> {{ p.alergias }} alergia(s)</span>{% endif %}
+                    </td>
+                    <td><div>{{ p.edad or '—' }}</div><div class="cell-sub">{{ p.sexo_texto }}{% if p.tipo_sangre %} · {{ p.tipo_sangre }}{% endif %}</div></td>
+                    <td class="cell-sub">{{ p.telefono or '' }}{% if p.email %}<br>{{ p.email }}{% endif %}</td>
+                    <td style="max-width:260px">{% for x in p.padecimientos_lista[:3] %}<span class="pill pill-purple" style="margin:2px 2px 2px 0">{{ x }}</span>{% else %}<span class="text-muted">—</span>{% endfor %}{% if p.padecimientos_lista|length > 3 %}<span class="pill pill-neutral">+{{ p.padecimientos_lista|length - 3 }}</span>{% endif %}</td>
+                    <td class="num"><span class="pill pill-accent">{{ p.visitas }}</span></td>
+                    <td class="text-2">{{ p.ultima_visita|fecha if p.ultima_visita else 'Sin consultas' }}</td>
+                    <td>{% if p.proxima_cita %}<span class="pill pill-info"><i class="far fa-calendar"></i> {{ p.proxima_cita|fecha('%d/%m %H:%M') }}</span>{% else %}<span class="text-muted">—</span>{% endif %}</td>
+                    <td class="num" style="white-space:nowrap">
+                        <a class="btn btn-glass btn-icon" href="{{ url_for('clinica.expediente', paciente_id=p.id) }}" title="Expediente"><i class="fas fa-folder-open"></i></a>
+                        <a class="btn btn-primary btn-icon" href="{{ url_for('clinica.consulta_nueva', paciente_id=p.id) }}" title="Nueva consulta"><i class="fas fa-stethoscope"></i></a>
+                    </td>
+                </tr>
+            {% else %}
+                {{ ui.empty_row(8, 'No hay pacientes con esos criterios', 'Registra un paciente nuevo con el botón superior.', 'fa-hospital-user') }}
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <p class="text-muted" style="margin:12px 0 0;font-size:.82rem">{{ pacientes|length }} paciente(s)</p>
+</section>
+{% endblock %}

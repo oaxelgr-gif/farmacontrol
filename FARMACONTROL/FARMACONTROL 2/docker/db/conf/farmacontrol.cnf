@@ -1,0 +1,13 @@
+[mysqld]
+character-set-server = utf8mb4
+collation-server     = utf8mb4_unicode_ci
+# Ciudad de México (sin horario de verano desde 2022)
+default-time-zone    = '-06:00'
+max_connections      = 200
+skip-name-resolve
+
+[client]
+default-character-set = utf8mb4
+
+[mysql]
+default-character-set = utf8mb4

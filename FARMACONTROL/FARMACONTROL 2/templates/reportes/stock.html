@@ -1,0 +1,42 @@
+{% extends "reportes/_layout.html" %}
+{% import "partials/_macros.html" as ui with context %}
+{% block title %}Stock bajo{% endblock %}
+{% block page_sub %}<p class="page-sub">Productos en o por debajo de su existencia mínima · lista de reposición</p>{% endblock %}
+
+{% block content %}
+<section class="grid-stats reveal reveal-2">
+    {{ ui.stat('Productos bajo mínimo', total_productos, 'fa-box-open', 'warning') }}
+    {{ ui.stat('Agotados', agotados, 'fa-ban', 'danger') }}
+    {{ ui.stat('Piezas faltantes', total_faltante|numero, 'fa-cubes', 'blue') }}
+    {{ ui.stat('Costo de reposición', valor_faltante|money, 'fa-coins', 'accent') }}
+</section>
+
+<section class="card-glass glass reveal reveal-3">
+    <div class="card-head">
+        <h2 class="card-title"><span class="ico"><i class="fas fa-clipboard-list"></i></span> Lista de reposición</h2>
+    </div>
+    <div class="table-wrap">
+        <table class="table" id="tablaStock" data-tabla="Stock bajo · lista de reposición" data-subtitulo="Productos en o por debajo de su existencia mínima" data-orientacion="landscape">
+            <thead><tr><th>Producto</th><th data-filtro>Anaquel</th><th class="num">Actual</th><th class="num">Mínimo</th><th style="min-width:150px">Nivel</th><th class="num">Faltante</th><th class="num">Costo unit.</th><th class="num">Reposición</th><th class="num no-print" data-no-export></th></tr></thead>
+            <tbody>
+            {% for p in productos %}
+                {% set pct = (p.porcentaje|num) %}
+                <tr>
+                    <td data-export="{{ p.nombre }}{{ ' (antibiótico)' if p.antibiotico }}{{ (' · ' ~ p.codigo_barras) if p.codigo_barras }}"><div class="cell-title">{{ p.nombre }}{% if p.antibiotico %} <span class="pill pill-purple">Antibiótico</span>{% endif %}</div><div class="cell-sub mono">{{ p.codigo_barras or '' }}</div></td>
+                    <td class="text-2">{{ p.seccion or 'Sin anaquel' }}</td>
+                    <td class="num alerta" data-export="{{ p.stock_actual }}"><span class="pill {{ 'pill-danger' if p.stock_actual <= 0 else 'pill-warning' }}">{{ p.stock_actual }}</span></td>
+                    <td class="num text-2">{{ p.stock_minimo }}</td>
+                    <td data-export="{{ pct|pct(0) }}"><div class="progress-glass {{ 'danger' if pct < 40 else 'warning' }}"><span style="width:{{ [pct, 100]|min }}%"></span></div><div class="cell-sub">{{ pct|pct(0) }}</div></td>
+                    <td class="num fw-800">{{ [p.faltante, 0]|max }}</td>
+                    <td class="num text-2">{{ p.precio_costo|money }}</td>
+                    <td class="num fw-800">{{ ([p.faltante, 0]|max * (p.precio_costo|num))|money }}</td>
+                    <td class="num no-print"><a class="btn btn-glass btn-sm" href="{{ url_for('inventario.agregar_editar_producto', id=p.id) }}"><i class="fas fa-plus"></i> Surtir</a></td>
+                </tr>
+            {% else %}
+                {{ ui.empty_row(9, '¡Todo en orden!', 'No hay productos por debajo del mínimo.', 'fa-circle-check') }}
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

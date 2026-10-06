@@ -1,0 +1,215 @@
+{% extends "layouts/base.html" %}
+{% import "partials/_macros.html" as ui with context %}
+{% set es_admin = current_user.rol == ROL_ADMIN %}
+{% block title %}Inventario{% endblock %}
+{% block page_eyebrow %}<div class="page-eyebrow"><i class="fas fa-boxes-stacked"></i> Inventario activo</div>{% endblock %}
+{% block page_title %}Productos{% endblock %}
+{% block page_sub %}<p class="page-sub">Existencias, lotes, anaqueles y caducidades.{% if nombre_anaquel %} · Anaquel: <b>{{ nombre_anaquel }}</b>{% elif seccion_id == 'sin' %} · <b>Sin anaquel</b>{% endif %}{% if alerta_stock in vencimientos %} · <b>{{ vencimientos[alerta_stock] }}</b>{% endif %}</p>{% endblock %}
+{% block page_actions %}
+<button type="button" class="btn btn-glass no-print" data-toggle="modal" data-target="#modalAnaqueles" title="Ver, crear, editar y eliminar anaqueles"><i class="fas fa-layer-group"></i> Anaqueles</button>
+{% if es_admin %}<a href="{{ url_for('inventario.agregar_editar_producto') }}" class="btn btn-primary no-print"><i class="fas fa-plus"></i> Nuevo producto</a>{% endif %}
+{% endblock %}
+
+{% block content %}
+<section class="grid-stats reveal reveal-2">
+    {{ ui.stat('Productos listados', total_productos|numero, 'fa-capsules', 'accent') }}
+    {{ ui.stat('Unidades en stock', total_stock|numero, 'fa-cubes', 'blue') }}
+    {% if es_admin %}{{ ui.stat('Valor a costo', total_valor|money, 'fa-coins', 'success') }}{% endif %}
+    {{ ui.stat('Bajo mínimo', stock_bajo, 'fa-triangle-exclamation', 'warning' if stock_bajo else 'neutral') }}
+</section>
+
+<section class="card-glass glass reveal reveal-3">
+    <form method="GET" action="{{ url_for('inventario.listar_productos') }}" class="filter-bar no-print" style="margin-bottom:18px">
+        <div class="form-group" style="flex:3 1 260px">
+            <label>Buscar</label>
+            <div class="input-icon"><i class="fas fa-magnifying-glass"></i>
+                <input type="search" name="search" class="form-control" placeholder="Nombre, código de barras o lote…" value="{{ search_query }}" autofocus>
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Anaquel</label>
+            <select name="seccion_id" class="form-control" data-autosubmit>
+                <option value="">Todos</option>
+                {% for s in anaqueles %}<option value="{{ s.id }}" {{ 'selected' if s.id|string == seccion_id|string }}>{{ s.nombre }} ({{ s.productos }})</option>{% endfor %}
+                <option value="sin" {{ 'selected' if seccion_id == 'sin' }}>— Sin anaquel —</option>
+            </select>
+            {% if alerta_stock %}<input type="hidden" name="alerta" value="{{ alerta_stock }}">{% endif %}
+        </div>
+        <div class="actions">
+            <button class="btn btn-primary" type="submit"><i class="fas fa-filter"></i> Filtrar</button>
+            {% if search_query or alerta_stock or seccion_id %}<a class="btn btn-glass" href="{{ url_for('inventario.listar_productos') }}">Limpiar</a>{% endif %}
+        </div>
+    </form>
+
+    <div class="segmented no-print" style="margin-bottom:18px">
+        {% set base = {'search': search_query, 'seccion_id': seccion_id} %}
+        <a href="{{ url_for('inventario.listar_productos', **base) }}" class="{{ 'active' if not alerta_stock }}">Todos</a>
+        <a href="{{ url_for('inventario.listar_productos', alerta='bajo', **base) }}" class="{{ 'active' if alerta_stock == 'bajo' }}"><i class="fas fa-triangle-exclamation"></i> Stock bajo</a>
+        <a href="{{ url_for('inventario.listar_productos', alerta='caducidad', **base) }}" class="{{ 'active' if alerta_stock == 'caducidad' }}"><i class="fas fa-hourglass-half"></i> Por vencer ({{ dias_alerta }} días)</a>
+        <a href="{{ url_for('inventario.listar_productos', alerta='antibiotico', **base) }}" class="{{ 'active' if alerta_stock == 'antibiotico' }}"><i class="fas fa-pills"></i> Antibióticos</a>
+    </div>
+    <div class="segmented no-print venc-filtros" style="margin:-8px 0 18px" aria-label="Filtros de caducidad">
+        <span class="seg-label"><i class="fas fa-calendar-xmark"></i> Caducidad:</span>
+        {% for clave in ['vence1', 'vence2', 'vence3', 'vencido'] %}
+        <a href="{{ url_for('inventario.listar_productos', alerta=clave, **base) }}" class="{{ 'active' if alerta_stock == clave }}">{{ vencimientos[clave] }} <span class="pill pill-{{ 'danger' if clave in ('vencido', 'vence1') else 'warning' }}" style="margin-left:4px">{{ conteo_venc.get(clave, 0) }}</span></a>
+        {% endfor %}
+    </div>
+
+    <div class="table-wrap">
+        <table class="table" id="tablaProductos" data-tabla="Inventario{{ (' · ' ~ vencimientos[alerta_stock]) if alerta_stock in vencimientos else (' · Stock bajo' if alerta_stock == 'bajo' else (' · Antibióticos' if alerta_stock == 'antibiotico' else (' · Por vencer' if alerta_stock == 'caducidad' else ''))) }}" data-subtitulo="{{ ('Anaquel: ' ~ nombre_anaquel) if nombre_anaquel else ('Sin anaquel' if seccion_id == 'sin' else 'Todos los anaqueles') }}{{ (' · búsqueda «' ~ search_query ~ '»') if search_query }}" data-orientacion="landscape">
+            <thead>
+                <tr>
+                    <th>Producto</th>
+                    <th data-filtro>Anaquel</th>
+                    <th>Código / lote</th>
+                    <th>Caducidad</th>
+                    <th class="num">Existencia</th>
+                    {% if es_admin %}<th class="num">Costo</th>{% endif %}
+                    <th class="num">Precio</th>
+                    {% if es_admin %}<th class="num no-print" data-no-export>Acciones</th>{% endif %}
+                </tr>
+            </thead>
+            <tbody>
+            {% for p in productos %}
+                {% set bajo = (p.stock_actual or 0) <= (p.stock_minimo or 0) %}
+                <tr>
+                    <td>
+                        <div class="cell-title">{{ p.nombre }}
+                            {% if p.antibiotico %}<span class="pill pill-purple" style="margin-left:6px"><i class="fas fa-prescription"></i> Antibiótico</span>{% endif %}
+                        </div>
+                        <div class="cell-sub">{% if p.sustancia_activa %}{{ p.sustancia_activa }}{% endif %}{% if p.tipo_antibiotico %} · {{ p.tipo_antibiotico }}{% endif %}</div>
+                    </td>
+                    <td class="text-2"><i class="fas fa-layer-group"></i> {{ p.nombre_seccion or 'Sin anaquel' }}</td>
+                    <td>
+                        <div class="mono">{{ p.codigo_barras or '—' }}</div>
+                        <div class="cell-sub">Lote: <b>{{ p.lote or 'N/A' }}</b></div>
+                    </td>
+                    {% set vencido = p.fecha_caducidad and p.fecha_caducidad < hoy %}
+                    <td class="{{ 'alerta' if vencido }}" data-export="{{ (p.fecha_caducidad|fecha) if p.fecha_caducidad else 'Sin fecha' }}{{ ' (VENCIDO)' if vencido }}">{{ ui.caducidad_pill(p.fecha_caducidad, hoy, dias_alerta) }}</td>
+                    <td class="num {{ 'alerta' if bajo }}" data-export="{{ p.stock_actual }} (mín. {{ p.stock_minimo }}){{ ' BAJO' if bajo }}">
+                        <span class="pill {{ 'pill-danger' if bajo else 'pill-success' }}" style="font-size:.85rem">{{ p.stock_actual }} pz</span>
+                        <div class="cell-sub">mín. {{ p.stock_minimo }}</div>
+                    </td>
+                    {% if es_admin %}<td class="num text-2">{{ p.precio_costo|money }}</td>{% endif %}
+                    <td class="num fw-800 text-accent">{{ p.precio_publico|money }}</td>
+                    {% if es_admin %}
+                    <td class="num no-print" style="white-space:nowrap">
+                        <a href="{{ url_for('inventario.agregar_editar_producto', id=p.id) }}" class="btn btn-glass btn-icon" title="Editar / sumar existencia"><i class="fas fa-pen"></i></a>
+                        <form action="{{ url_for('inventario.eliminar_producto', id=p.id) }}" method="POST" class="d-inline"
+                              data-confirm="¿Eliminar «{{ p.nombre }}»?" data-confirm-text="El producto dejará de aparecer en inventario y punto de venta." data-confirm-ok="Sí, eliminar">
+                            <button type="submit" class="btn btn-glass btn-icon danger" title="Eliminar"><i class="fas fa-trash"></i></button>
+                        </form>
+                    </td>
+                    {% endif %}
+                </tr>
+            {% else %}
+                {{ ui.empty_row(8, 'No se encontraron productos', 'Prueba con otro término o limpia los filtros.', 'fa-box-open') }}
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}
+
+{% block modals %}
+<div class="modal fade" id="modalAnaqueles" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" style="max-width:640px">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-layer-group text-accent"></i> Anaqueles</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar"><span aria-hidden="true">&times;</span></button>
+            </div>
+            <div class="modal-body">
+                {% if es_admin %}
+                <form id="formAnaquelNuevo" class="anaquel-nuevo">
+                    <input name="nombre" class="form-control" placeholder="Nombre del anaquel (ej. Anaquel A · Analgésicos)" maxlength="100" required>
+                    <input name="descripcion" class="form-control" placeholder="Descripción o ubicación (opcional)" maxlength="255">
+                    <button class="btn btn-primary"><i class="fas fa-plus"></i> Agregar</button>
+                </form>
+                {% endif %}
+                <div id="listaAnaqueles" class="anaqueles-lista"><div class="text-muted" style="padding:16px">Cargando…</div></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    var ES_ADMIN = {{ 'true' if es_admin else 'false' }};
+    var URL_LISTA = "{{ url_for('inventario.anaqueles_json') }}";
+    var URL_BASE = "{{ url_for('inventario.anaquel_crear') }}";
+    var URL_INV = "{{ url_for('inventario.listar_productos') }}";
+    var esc = FC.escape;
+    var datos = [];
+
+    function enviar(url, cuerpo) {
+        return fetch(url, { method: 'POST', credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'fetch' }, body: JSON.stringify(cuerpo || {}) })
+            .then(function (r) { return r.json(); });
+    }
+    function cargar() {
+        return FC.json(URL_LISTA).then(function (r) { datos = r.data; pintar(r.sin_anaquel); });
+    }
+    function pintar(sinAnaquel) {
+        var html = datos.map(function (a) {
+            return '<div class="anaquel" data-id="' + a.id + '">' +
+                '<div class="anaquel-ver"><span class="anaquel-ico"><i class="fas fa-layer-group"></i></span>' +
+                '<a class="grow" href="' + URL_INV + '?seccion_id=' + a.id + '" title="Ver productos de este anaquel"><b>' + esc(a.nombre) + '</b>' +
+                (a.descripcion ? '<small>' + esc(a.descripcion) + '</small>' : '') + '</a>' +
+                '<span class="pill pill-accent" title="Productos · piezas">' + a.productos + ' prod. · ' + a.piezas + ' pz</span>' +
+                (ES_ADMIN ? '<button type="button" class="btn btn-ghost btn-icon" data-act="editar" title="Editar"><i class="fas fa-pen"></i></button>' +
+                    '<button type="button" class="btn btn-ghost btn-icon danger" data-act="eliminar" title="Eliminar"><i class="fas fa-trash"></i></button>' : '') +
+                '</div></div>';
+        }).join('');
+        html += '<a class="anaquel sin" href="' + URL_INV + '?seccion_id=sin"><div class="anaquel-ver"><span class="anaquel-ico"><i class="fas fa-box-open"></i></span><span class="grow"><b>Sin anaquel</b><small>Productos sin ubicación asignada</small></span><span class="pill pill-neutral">' + sinAnaquel + ' prod.</span></div></a>';
+        document.getElementById('listaAnaqueles').innerHTML = datos.length || sinAnaquel ? html :
+            '<div class="empty"><i class="fas fa-layer-group"></i><b>Aún no hay anaqueles</b><span>Crea el primero con el formulario de arriba.</span></div>';
+    }
+    function buscar(id) { return datos.filter(function (a) { return String(a.id) === String(id); })[0]; }
+
+    document.getElementById('listaAnaqueles').addEventListener('click', function (e) {
+        var btn = e.target.closest('[data-act]'); if (!btn) return;
+        var fila = btn.closest('.anaquel'), a = buscar(fila.getAttribute('data-id'));
+        if (btn.getAttribute('data-act') === 'editar') {
+            fila.innerHTML = '<form class="anaquel-edit"><input name="nombre" class="form-control" maxlength="100" required value="' + esc(a.nombre) + '">' +
+                '<input name="descripcion" class="form-control" maxlength="255" placeholder="Descripción (opcional)" value="' + esc(a.descripcion || '') + '">' +
+                '<button class="btn btn-primary btn-sm"><i class="fas fa-check"></i> Guardar</button><button type="button" class="btn btn-ghost btn-sm" data-cancel>Cancelar</button></form>';
+            fila.querySelector('input').focus();
+            fila.querySelector('[data-cancel]').addEventListener('click', cargar);
+            fila.querySelector('form').addEventListener('submit', function (ev) {
+                ev.preventDefault();
+                enviar(URL_BASE + '/' + a.id, { nombre: this.nombre.value, descripcion: this.descripcion.value }).then(function (r) {
+                    FC.toast(r.message, r.success ? 'success' : 'danger'); if (r.success) { window._anaquelCambio = true; cargar(); }
+                });
+            });
+        } else {
+            var otros = datos.filter(function (x) { return x.id !== a.id; });
+            var opciones = '<option value="">Dejar «Sin anaquel»</option>' + otros.map(function (x) { return '<option value="' + x.id + '">Mover a: ' + esc(x.nombre) + '</option>'; }).join('');
+            FC.swal({ icon: 'warning', title: 'Eliminar «' + a.nombre + '»',
+                html: a.productos ? '<p>Tiene <b>' + a.productos + '</b> producto(s). ¿Qué hacemos con ellos?</p><select id="sw-mover" class="form-control">' + opciones + '</select>' : '<p>El anaquel está vacío.</p>',
+                showCancelButton: true, confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar',
+                preConfirm: function () { var s = document.getElementById('sw-mover'); return s ? s.value : ''; }
+            }).then(function (r) {
+                if (!r.isConfirmed) return;
+                enviar(URL_BASE + '/' + a.id + '/eliminar', { mover_a: r.value }).then(function (res) {
+                    FC.toast(res.message, res.success ? 'success' : 'danger'); if (res.success) { window._anaquelCambio = true; cargar(); }
+                });
+            });
+        }
+    });
+
+    var nuevo = document.getElementById('formAnaquelNuevo');
+    if (nuevo) nuevo.addEventListener('submit', function (e) {
+        e.preventDefault();
+        enviar(URL_BASE, { nombre: nuevo.nombre.value, descripcion: nuevo.descripcion.value }).then(function (r) {
+            FC.toast(r.message, r.success ? 'success' : 'danger');
+            if (r.success) { window._anaquelCambio = true; nuevo.reset(); cargar(); }
+        });
+    });
+    $('#modalAnaqueles').on('show.bs.modal', cargar);
+    $('#modalAnaqueles').on('hidden.bs.modal', function () { if (window._anaquelCambio) location.reload(); });
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,40 @@
+{% extends "clinica/_layout.html" %}
+{% import "partials/_macros.html" as ui with context %}
+{% set volver_a = 'estudios' %}
+{% block title %}Estudios{% endblock %}
+{% block page_title %}Estudios clínicos{% endblock %}
+{% block page_sub %}<p class="page-sub">Seguimiento de laboratorio, imagen y gabinete de todos los pacientes.</p>{% endblock %}
+{% block clinica %}
+<section class="card-glass glass reveal reveal-2">
+    <div class="d-flex justify-content-between flex-wrap" style="gap:12px;margin-bottom:16px">
+        <div class="segmented">
+            {% for k, v in [('pendientes','Pendientes'),('resultado','Con resultado'),('cancelado','Cancelados'),('todos','Todos')] %}
+            <a href="{{ url_for('clinica.estudios', estado=k, q=q) }}" class="{{ 'active' if estado == k }}">{{ v }}</a>
+            {% endfor %}
+        </div>
+        <form method="GET" class="d-flex" style="gap:8px"><input type="hidden" name="estado" value="{{ estado }}">
+            <input type="search" name="q" class="form-control" value="{{ q }}" placeholder="Paciente o estudio…" style="min-width:240px">
+            <button class="btn btn-primary"><i class="fas fa-magnifying-glass"></i></button></form>
+    </div>
+    <div class="table-wrap"><table class="table">
+        <thead><tr><th>Paciente</th><th>Estudio</th><th>Tipo</th><th>Solicitado</th><th>Estado</th><th>Resultado</th><th class="num"></th></tr></thead>
+        <tbody>
+        {% for e in estudios %}
+            <tr>
+                <td><a href="{{ url_for('clinica.expediente', paciente_id=e.paciente_id) }}#estudios" style="color:inherit">{{ ui.user_cell(e.paciente, e.expediente) }}</a></td>
+                <td class="cell-title">{{ e.nombre }}<div class="cell-sub">{{ e.laboratorio or '' }}</div></td>
+                <td><span class="pill pill-info">{{ TIPOS_ESTUDIO.get(e.tipo, e.tipo) }}</span></td>
+                <td class="text-2">{{ e.fecha_solicitud|fecha if e.fecha_solicitud else '—' }}{% if e.estado in ('solicitado','en_proceso') and e.fecha_solicitud %}<div class="cell-sub">hace {{ (now().date() - e.fecha_solicitud).days }} días</div>{% endif %}</td>
+                <td><span class="pill pill-{{ {'solicitado':'warning','en_proceso':'info','resultado':'success','cancelado':'neutral'}.get(e.estado) }}">{{ ESTADOS_ESTUDIO.get(e.estado) }}</span></td>
+                <td style="max-width:280px"><span class="cell-sub">{{ (e.resultado or '')|truncate(80) }}</span>
+                    {% if e.archivo %}<a href="{{ url_for('clinica.estudio_archivo', estudio_id=e.id) }}" target="_blank" class="pill pill-accent"><i class="fas fa-paperclip"></i> Archivo</a>{% endif %}</td>
+                <td class="num"><button class="btn btn-glass btn-sm" data-toggle="modal" data-target="#modalResultado"
+                    data-modal-fill='{{ {"_action": url_for("clinica.estudio_resultado", estudio_id=e.id), "nombre": e.paciente ~ " · " ~ e.nombre, "estado": "resultado" if e.estado in ("solicitado","en_proceso") else e.estado, "laboratorio": e.laboratorio, "resultado": e.resultado, "interpretacion": e.interpretacion, "fecha_resultado": e.fecha_resultado|string if e.fecha_resultado else ""}|tojson }}'>
+                    <i class="fas fa-file-medical"></i> Resultado</button></td>
+            </tr>
+        {% else %}{{ ui.empty_row(7, 'Sin estudios en esta vista', '', 'fa-flask') }}{% endfor %}
+        </tbody>
+    </table></div>
+</section>
+{% endblock %}
+{% block modals %}{% include "clinica/_modal_resultado.html" %}{% endblock %}

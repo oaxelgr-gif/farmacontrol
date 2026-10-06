@@ -1,0 +1,41 @@
+{# Vista previa e impresión de tickets de venta. Uso: verTicket(ventaId, folio) #}
+<div class="modal fade" id="modalTicketPreview" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div><h5 class="modal-title">Vista previa del ticket</h5><div class="text-muted" style="font-size:.82rem" id="tp-folio"></div></div>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar">&times;</button>
+            </div>
+            <div class="modal-body" style="padding:12px">
+                <iframe id="tp-iframe" title="Ticket" style="width:100%;height:58vh;border:0;border-radius:14px;background:#fff"></iframe>
+            </div>
+            <div class="modal-footer d-flex" style="gap:10px">
+                <button class="btn btn-glass" data-dismiss="modal">Cerrar</button>
+                <button class="btn btn-primary" style="flex:1" onclick="imprimirTicketPreview()"><i class="fas fa-print"></i> Imprimir (reimpresión)</button>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    var TICKET_URL = "{{ url_for('ventas.reimprimir_ticket', venta_id=0) }}";
+    function verTicket(id, folio) {
+        document.getElementById('tp-folio').textContent = folio || '';
+        document.getElementById('tp-iframe').src = TICKET_URL.replace(/0$/, id) + '?reimpresion=1';
+        $('#modalTicketPreview').modal('show');
+    }
+    // Reimprime directo, sin abrir la vista previa
+    function reimprimirTicket(id) {
+        var f = document.getElementById('tp-oculto');
+        if (!f) { f = document.createElement('iframe'); f.id = 'tp-oculto'; f.title = 'Ticket'; f.style.cssText = 'position:fixed;width:0;height:0;border:0;visibility:hidden'; document.body.appendChild(f); }
+        f.onload = function () { try { f.contentWindow.focus(); f.contentWindow.print(); } catch (e) { verTicket(id); } f.onload = null; };
+        f.src = TICKET_URL.replace(/0$/, id) + '?reimpresion=1';
+        if (window.FC) FC.toast('Enviando ticket a la impresora…', 'info', 2500);
+    }
+    function imprimirTicketPreview() {
+        var f = document.getElementById('tp-iframe');
+        try { f.contentWindow.focus(); f.contentWindow.print(); } catch (e) { FC.toast('No se pudo imprimir', 'warning'); }
+    }
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'F12' && typeof VENTA_ACTUAL !== 'undefined') { e.preventDefault(); reimprimirTicket(VENTA_ACTUAL.id); }
+    });
+</script>

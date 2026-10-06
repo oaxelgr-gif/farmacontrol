@@ -1,0 +1,96 @@
+{% extends "reportes/_layout.html" %}
+{% block title %}Acceso desde otros equipos{% endblock %}
+{% block page_sub %}<p class="page-sub">Dirección para entrar al sistema desde computadoras, tabletas y celulares conectados a la misma red.</p>{% endblock %}
+{% block libs %}<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>{% endblock %}
+
+{% block content %}
+{% if url %}
+<section class="grid-3-1 reveal reveal-2" style="align-items:start">
+    <div class="card-glass glass red-card">
+        <div class="card-head"><h2 class="card-title"><span class="ico"><i class="fas fa-network-wired"></i></span> Dirección del sistema en la red</h2>
+            <span class="pill pill-success"><span class="dot pulse"></span> En línea</span></div>
+        <div class="red-url" id="redUrl">{{ url }}</div>
+        <div class="d-flex flex-wrap" style="gap:10px;margin-top:14px">
+            <button type="button" class="btn btn-primary" data-copiar="{{ url }}"><i class="fas fa-copy"></i> Copiar dirección</button>
+            <a class="btn btn-glass" href="{{ url }}" target="_blank" rel="noopener"><i class="fas fa-arrow-up-right-from-square"></i> Abrir</a>
+            <button type="button" class="btn btn-glass" onclick="window.print()"><i class="fas fa-print"></i> Imprimir hoja para pegar</button>
+        </div>
+        <div class="kv" style="margin-top:18px"><span class="text-2">IP de esta computadora</span><b class="mono">{{ host_ip }}</b></div>
+        <div class="kv"><span class="text-2">Puerto del sistema</span><b class="mono">{{ puerto }}</b></div>
+        <div class="kv"><span class="text-2">API (documentación)</span><a class="mono" href="{{ url_api }}" target="_blank" rel="noopener">{{ url_api }}</a></div>
+        <div class="kv"><span class="text-2">En la computadora servidor</span><span class="mono">http://localhost:{{ puerto }}</span></div>
+        <div class="kv"><span class="text-2">Origen de la IP</span><span>{{ origen }}</span></div>
+    </div>
+    <aside class="card-glass glass text-center">
+        <div class="card-head" style="justify-content:center"><h2 class="card-title"><span class="ico"><i class="fas fa-qrcode"></i></span> Escanéalo con el celular</h2></div>
+        <div id="qr" class="red-qr" aria-label="Código QR con la dirección"></div>
+        <p class="cell-sub" id="qrAviso" style="margin-top:10px">Abre la cámara del celular, apunta al código y toca el enlace.</p>
+    </aside>
+</section>
+{% else %}
+<section class="card-glass glass reveal reveal-2">
+    <div class="alert alert-warning" style="margin:0">
+        <i class="fas fa-triangle-exclamation text-warning"></i>
+        <div><b>Aún no se conoce la IP de esta computadora.</b><br>
+            Enciende el sistema con el acceso directo <b>FarmaControl</b> del escritorio (lo detecta solo), o abre esta página desde otro equipo
+            usando la dirección que muestra <code>VER_DIRECCION.bat</code>.</div>
+    </div>
+</section>
+{% endif %}
+
+<section class="card-glass glass reveal reveal-3" style="margin-top:20px">
+    <div class="card-head"><h2 class="card-title"><span class="ico"><i class="fas fa-list-check"></i></span> Si otro equipo no puede entrar</h2></div>
+    <ol class="red-pasos">
+        <li>El equipo debe estar conectado <b>a la misma red Wi-Fi o cable</b> que esta computadora (no a la red de invitados).</li>
+        <li>Escribe la dirección completa, con <b>http://</b> y el puerto <b>:{{ puerto }}</b>.</li>
+        <li>En la computadora servidor, la red de Windows debe estar como <b>Privada</b> y el permiso del firewall instalado (lo hace el instalador).</li>
+        <li>La computadora servidor debe estar encendida, sin suspenderse, con el sistema iniciado.</li>
+        <li>Si la dirección cambió, reinicia el sistema con el acceso directo del escritorio y vuelve a consultar esta página. Para que no cambie, reserva la IP en el módem.</li>
+    </ol>
+</section>
+
+<section class="red-imprimible">
+    <h1>{{ negocio.nombre if negocio else 'FarmaControl' }}</h1>
+    <p>Para entrar al sistema desde esta red, abre el navegador y escribe:</p>
+    <div class="red-url">{{ url or '' }}</div>
+    <div id="qrPrint"></div>
+</section>
+{% endblock %}
+
+{% block report_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var url = {{ (url or '')|tojson }};
+    document.querySelectorAll('[data-copiar]').forEach(function (b) {
+        b.addEventListener('click', function () {
+            var t = b.getAttribute('data-copiar');
+            var ok = function () { FC.toast('Dirección copiada', 'success'); };
+            if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(t).then(ok);
+            else { var a = document.createElement('textarea'); a.value = t; document.body.appendChild(a); a.select(); try { document.execCommand('copy'); ok(); } catch (e) {} a.remove(); }
+        });
+    });
+    if (!url) return;
+    if (window.QRCode) {
+        new QRCode(document.getElementById('qr'), { text: url, width: 220, height: 220, colorDark: '#0d1b24', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M });
+        new QRCode(document.getElementById('qrPrint'), { text: url, width: 260, height: 260, colorDark: '#000000', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M });
+    } else {
+        document.getElementById('qrAviso').textContent = 'No se pudo cargar el código QR (sin internet). Usa la dirección escrita.';
+    }
+});
+</script>
+<style>
+.red-url { font-family: var(--font-mono); font-size: clamp(1.4rem, 3.4vw, 2.3rem); font-weight: 800; color: var(--accent); word-break: break-all; letter-spacing: -.01em; }
+.red-qr { display: inline-block; padding: 14px; background: #fff; border-radius: 18px; }
+.red-qr img, .red-qr canvas { display: block; }
+.red-pasos { margin: 0; padding-left: 20px; line-height: 1.9; }
+.red-imprimible { display: none; }
+@media print {
+    body * { visibility: hidden; }
+    .red-imprimible, .red-imprimible * { visibility: visible; }
+    .red-imprimible { display: block; position: absolute; left: 0; top: 0; width: 100%; text-align: center; padding-top: 40px; color: #000; }
+    .red-imprimible h1 { font-size: 26pt; margin: 0 0 10px; color: #000; }
+    .red-imprimible .red-url { color: #000; font-size: 26pt; margin: 18px 0 24px; }
+    .red-imprimible #qrPrint img, .red-imprimible #qrPrint canvas { margin: 0 auto; }
+}
+</style>
+{% endblock %}

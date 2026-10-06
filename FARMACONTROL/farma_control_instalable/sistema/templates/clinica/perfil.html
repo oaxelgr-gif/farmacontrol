@@ -1,0 +1,51 @@
+{% extends "clinica/_layout.html" %}
+{% block title %}Perfil médico{% endblock %}
+{% block page_title %}Perfil médico{% endblock %}
+{% block page_sub %}<p class="page-sub">Estos datos aparecen en el encabezado y pie de tus recetas.</p>{% endblock %}
+{% block clinica %}
+<form method="POST" class="grid-3-1 reveal reveal-2" data-loading enctype="multipart/form-data">
+    <section class="card-glass glass">
+        <div class="row">
+            {% for campo, etiqueta, col, ph in [
+                ('nombre_mostrar','Nombre como aparece en la receta *','col-md-8','Dr. Juan Pérez López'),
+                ('especialidad','Título / especialidad','col-md-4','Médico Cirujano y Partero'),
+                ('cedula_profesional','Cédula profesional','col-md-4',''),
+                ('cedula_especialidad','Cédula de especialidad','col-md-4',''),
+                ('institucion','Universidad / institución','col-md-4','Universidad de…'),
+                ('telefono','Teléfono del consultorio','col-md-4','442-323-73-49'),
+                ('whatsapp','WhatsApp','col-md-4','427-159-50-80'),
+                ('email','Correo','col-md-4',''),
+                ('horario','Horario de atención','col-md-4','Lun a Vie 9:00 – 18:00'),
+                ('direccion','Dirección del consultorio','col-12','Calle, número, colonia, C.P., ciudad'),
+                ('leyenda_receta','Leyenda al pie de la receta','col-12','Ej. Vigencia de la receta: 30 días')] %}
+            <div class="{{ col }} form-group"><label>{{ etiqueta }}</label><input name="{{ campo }}" class="form-control" value="{{ m[campo] or '' }}" placeholder="{{ ph }}" {{ 'required' if campo == 'nombre_mostrar' }}></div>
+            {% endfor %}
+        </div>
+        <div class="card-head" style="margin-top:8px"><h3 class="card-title"><span class="ico"><i class="fas fa-image"></i></span> Logos de la receta</h3></div>
+        <div class="row">
+            {% for lado, titulo, ayuda in [('izq', 'Logo izquierdo', 'Escudo de tu universidad o institución'), ('der', 'Logo derecho', 'Emblema médico (si no subes uno se usa el caduceo)')] %}
+            <div class="col-md-6 form-group">
+                <label>{{ titulo }}</label>
+                <div class="logo-slot">
+                    {% if m['logo_' ~ lado] %}<img src="{{ url_for('clinica.perfil_logo', usuario_id=m.usuario_id, lado=lado) }}" alt="">{% else %}<span class="text-muted"><i class="fas fa-{{ 'building-columns' if lado == 'izq' else 'staff-snake' }} fa-2x"></i></span>{% endif %}
+                    <div style="flex:1;min-width:0">
+                        <input type="file" name="logo_{{ lado }}" accept="image/png,image/jpeg,image/webp,image/svg+xml" class="form-control">
+                        <div class="form-hint">{{ ayuda }}. PNG con fondo transparente se ve mejor.</div>
+                        {% if m['logo_' ~ lado] %}<label class="chip-check" style="margin-top:6px"><input type="checkbox" name="quitar_{{ lado }}" value="1"> Quitar logo</label>{% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+    <aside>
+        <section class="card-glass glass sticky-top-glass">
+            <div class="fw-800" style="color:var(--accent);font-size:1.1rem">{{ m.nombre_mostrar }}</div>
+            <div class="text-muted" style="font-size:.85rem">{{ m.especialidad or '' }}{% if m.cedula_profesional %} · Céd. {{ m.cedula_profesional }}{% endif %}</div>
+            <hr>
+            <button class="btn btn-primary btn-block"><i class="fas fa-floppy-disk"></i> Guardar perfil</button>
+            <p class="form-hint" style="margin-top:12px"><i class="fas fa-circle-info"></i> La receta se imprime en hoja carta con original y copia (dos medias cartas), igual a tu formato actual. También puedes imprimir solo media carta.</p>
+        </section>
+    </aside>
+</form>
+{% endblock %}

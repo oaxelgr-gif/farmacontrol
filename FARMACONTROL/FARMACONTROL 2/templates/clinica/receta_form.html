@@ -1,0 +1,82 @@
+{% extends "clinica/_layout.html" %}
+{% import "partials/_macros.html" as ui with context %}
+{% block title %}Nueva receta{% endblock %}
+{% block page_title %}Receta rápida{% endblock %}
+{% block page_sub %}<p class="page-sub">Para resurtir tratamiento sin nota completa. Para una consulta usa “Nueva consulta”.</p>{% endblock %}
+{% block clinica %}
+{% if not paciente %}
+<section class="card-glass glass reveal reveal-2" style="max-width:760px">
+    <div class="card-head"><h2 class="card-title"><span class="ico"><i class="fas fa-magnifying-glass"></i></span> Selecciona al paciente</h2></div>
+    <div class="input-icon"><i class="fas fa-user"></i><input type="search" id="buscaPaciente" class="form-control form-control-lg" placeholder="Nombre, expediente o teléfono…" autofocus autocomplete="off"></div>
+    <div id="resPacientes" class="list" style="margin-top:10px"></div>
+</section>
+{% else %}
+{% set p = paciente %}
+<form method="POST" class="grid-3-1 reveal reveal-2" data-loading autocomplete="off">
+    <input type="hidden" name="paciente_id" value="{{ p.id }}"><input type="hidden" name="medicamentos_json">
+    <div>
+        <section class="card-glass glass">
+            <div class="card-head">
+                <h2 class="card-title"><span class="ico"><i class="fas fa-prescription"></i></span> Medicamentos</h2>
+                <button type="button" class="btn btn-glass btn-sm" data-add="medicamentos"><i class="fas fa-plus"></i> Agregar</button>
+            </div>
+            {% if exp.alergias %}<div class="alerta-alergias" style="margin:0 0 14px"><i class="fas fa-triangle-exclamation"></i> Alérgico a: {{ exp.alergias|map(attribute='alergeno')|join(', ') }}</div>{% endif %}
+            {% set activos = exp.medicamentos|selectattr('activo')|list %}
+            {% if activos %}<div style="margin-bottom:12px"><span class="text-muted" style="font-size:.82rem">Tratamiento actual (clic para agregar):</span>
+                {% for m in activos %}<button type="button" class="btn btn-glass btn-sm" style="margin:4px 4px 0 0" data-precargar='{{ {"medicamento": m.medicamento, "dosis": m.dosis, "frecuencia": m.frecuencia, "via": m.via or "Oral"}|tojson }}'><i class="fas fa-rotate"></i> {{ m.medicamento }}</button>{% endfor %}</div>{% endif %}
+            <div data-repeater="medicamentos"></div>
+            <p class="text-muted" data-empty-for="medicamentos" style="margin:0">Agrega al menos un medicamento.</p>
+        </section>
+        <section class="card-glass glass">
+            <div class="row">
+                <div class="col-md-8 form-group"><label>Diagnóstico</label><input name="diagnostico" class="form-control" list="cie10-list" value="{{ exp.padecimientos|rejectattr('estado','equalto','resuelto')|map(attribute='nombre')|join(' / ') }}"></div>
+                <div class="col-md-4 form-group"><label>Próxima cita</label><input type="date" name="proxima_cita" class="form-control"></div>
+                <div class="col-12 form-group" style="margin:0"><label>Indicaciones generales</label><textarea name="indicaciones_generales" class="form-control" rows="2"></textarea></div>
+            </div>
+        </section>
+    </div>
+    <aside>
+        <div class="card-glass glass side-resumen">
+            <div class="fw-800">{{ p.nombre_completo }}</div>
+            <div class="cell-sub" style="margin-bottom:12px">{{ p.expediente }} · {{ p.edad or '' }}</div>
+            <button class="btn btn-primary btn-lg btn-block"><i class="fas fa-print"></i> Generar e imprimir</button>
+            <a class="btn btn-ghost btn-block" href="{{ url_for('clinica.expediente', paciente_id=p.id) }}" style="margin-top:8px">Cancelar</a>
+        </div>
+    </aside>
+</form>
+<template id="tpl-medicamentos">
+    <div class="rep-row rep-med">
+        <span class="n-badge" data-n></span>
+        <input type="hidden" data-field="producto_id">
+        <div class="form-group"><label>Medicamento <span class="pill pill-success" data-inv hidden></span></label><input data-field="medicamento" class="form-control" placeholder="Nombre y concentración"></div>
+        <div class="form-group"><label>Presentación</label><input data-field="presentacion" class="form-control" list="presentaciones"></div>
+        <div class="form-group"><label>Dosis</label><input data-field="dosis" class="form-control" placeholder="1 tableta"></div>
+        <div class="form-group"><label>Vía</label><select data-field="via" class="form-control">{% for v in VIAS %}<option>{{ v }}</option>{% endfor %}</select></div>
+        <div class="form-group"><label>Frecuencia</label><input data-field="frecuencia" class="form-control" list="frecuencias"></div>
+        <button type="button" class="btn btn-ghost btn-icon danger rm"><i class="fas fa-xmark"></i></button>
+        <div class="form-group"><label>Duración</label><input data-field="duracion" class="form-control" list="duraciones"></div>
+        <div class="form-group"><label>Cantidad a surtir</label><input data-field="cantidad" class="form-control"></div>
+        <div class="form-group" style="grid-column: span 3"><label>Indicaciones</label><input data-field="indicaciones" class="form-control"></div>
+    </div>
+</template>
+<datalist id="cie10-list"></datalist>
+<datalist id="frecuencias">{% for f in ['Cada 4 horas','Cada 6 horas','Cada 8 horas','Cada 12 horas','Cada 24 horas','Por la mañana','Por la noche','Por razón necesaria','Dosis única'] %}<option value="{{ f }}">{% endfor %}</datalist>
+<datalist id="duraciones">{% for f in ['3 días','5 días','7 días','10 días','14 días','30 días','Indefinido'] %}<option value="{{ f }}">{% endfor %}</datalist>
+<datalist id="presentaciones">{% for f in ['Tabletas','Cápsulas','Jarabe','Suspensión','Gotas','Solución inyectable','Inhalador','Crema','Ungüento'] %}<option value="{{ f }}">{% endfor %}</datalist>
+{% endif %}
+{% endblock %}
+{% block clinica_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    {% if not paciente %}
+    CL.buscadorPacientes(document.getElementById('buscaPaciente'), document.getElementById('resPacientes'),
+        "{{ url_for('clinica.api_pacientes') }}", function (id) { location.href = "{{ url_for('clinica.receta_nueva') }}?paciente_id=" + id; });
+    {% else %}
+    CL.cargarCie10();
+    var rep = CL.repeater('medicamentos', { alAgregar: function (f) { CL.enlazarMedicamento(f, "{{ url_for('clinica.api_medicamentos') }}"); } });
+    document.querySelectorAll('[data-precargar]').forEach(function (b) { b.addEventListener('click', function () { rep.agregar(JSON.parse(b.getAttribute('data-precargar'))); }); });
+    rep.agregar();
+    {% endif %}
+});
+</script>
+{% endblock %}

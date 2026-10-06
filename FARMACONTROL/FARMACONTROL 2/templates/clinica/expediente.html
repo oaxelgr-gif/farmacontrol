@@ -1,0 +1,462 @@
+{% extends "clinica/_layout.html" %}
+{% import "partials/_macros.html" as ui with context %}
+{% set p = paciente %}
+{% set a = antecedentes %}
+{% block title %}{{ p.nombre_completo }}{% endblock %}
+{% block page_title %}Expediente clínico{% endblock %}
+{% block page_sub %}<p class="page-sub">{{ p.expediente }} · registrado el {{ p.created_at|fecha }}</p>{% endblock %}
+{% block libs %}<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>{% endblock %}
+
+{% macro estado_pill(estado) -%}
+<span class="pill pill-{{ {'activo':'danger','controlado':'warning','resuelto':'success'}.get(estado, 'neutral') }}">{{ ESTADOS_PADECIMIENTO.get(estado, estado) }}</span>
+{%- endmacro %}
+{% macro estudio_pill(estado) -%}
+<span class="pill pill-{{ {'solicitado':'warning','en_proceso':'info','resultado':'success','cancelado':'neutral'}.get(estado, 'neutral') }}">{{ ESTADOS_ESTUDIO.get(estado, estado) }}</span>
+{%- endmacro %}
+{% macro baja(tipo, item_id, texto) -%}
+<form method="POST" action="{{ url_for('clinica.registro_baja', paciente_id=p.id, tipo=tipo, item_id=item_id) }}" class="d-inline"
+      data-confirm="¿Eliminar {{ texto }}?" data-confirm-text="Se quitará del expediente activo." data-confirm-ok="Eliminar">
+    <button class="btn btn-ghost btn-icon danger" title="Eliminar"><i class="fas fa-trash"></i></button>
+</form>
+{%- endmacro %}
+{% macro vitales_box(c) -%}
+<div class="vitals">
+    {% if c.peso_kg %}<div class="vital"><small>Peso</small><b>{{ c.peso_kg|numero(1) }} kg</b></div>{% endif %}
+    {% if c.talla_cm %}<div class="vital"><small>Talla</small><b>{{ c.talla_cm|numero(0) }} cm</b></div>{% endif %}
+    {% if c.imc %}{% set ci = clasificar_imc(c.imc) %}<div class="vital"><small>IMC</small><b class="text-{{ ci[1] if ci[1] != 'neutral' else '' }}">{{ c.imc|numero(1) }}</b></div>{% endif %}
+    {% if c.ta_sistolica %}{% set ct = clasificar_ta(c.ta_sistolica, c.ta_diastolica) %}<div class="vital"><small>T/A</small><b class="text-{{ ct[1] }}">{{ c.ta_sistolica }}/{{ c.ta_diastolica }}</b></div>{% endif %}
+    {% if c.frecuencia_cardiaca %}<div class="vital"><small>FC</small><b>{{ c.frecuencia_cardiaca }} lpm</b></div>{% endif %}
+    {% if c.frecuencia_respiratoria %}<div class="vital"><small>FR</small><b>{{ c.frecuencia_respiratoria }} rpm</b></div>{% endif %}
+    {% if c.temperatura %}<div class="vital"><small>Temp.</small><b class="{{ 'text-danger' if (c.temperatura|num) >= 38 }}">{{ c.temperatura|numero(1) }} °C</b></div>{% endif %}
+    {% if c.saturacion_o2 %}<div class="vital"><small>SpO₂</small><b class="{{ 'text-danger' if c.saturacion_o2 < 92 }}">{{ c.saturacion_o2 }} %</b></div>{% endif %}
+    {% if c.glucosa_capilar %}<div class="vital"><small>Glucosa</small><b class="{{ 'text-danger' if c.glucosa_capilar >= 180 or c.glucosa_capilar < 70 }}">{{ c.glucosa_capilar }} mg/dL</b></div>{% endif %}
+</div>
+{%- endmacro %}
+
+{% block clinica %}
+{# ===================== ENCABEZADO DEL PACIENTE ===================== #}
+<section class="card-glass glass pac-head reveal reveal-2">
+    <div class="pac-avatar {{ 'f' if p.sexo == 'F' }}">{{ p.nombre_completo|iniciales }}</div>
+    <div style="min-width:0">
+        <h2 class="pac-name">{{ p.nombre_completo }}</h2>
+        <div class="pac-meta">
+            <span><i class="fas fa-folder"></i> {{ p.expediente }}</span>
+            <span><i class="fas fa-cake-candles"></i> {{ p.edad or 'Edad no registrada' }}{% if p.fecha_nacimiento %} ({{ p.fecha_nacimiento|fecha }}){% endif %}</span>
+            <span><i class="fas fa-venus-mars"></i> {{ p.sexo_texto }}</span>
+            {% if p.tipo_sangre %}<span><i class="fas fa-droplet text-danger"></i> {{ p.tipo_sangre }}</span>{% endif %}
+            {% if p.telefono %}<span><i class="fas fa-phone"></i> {{ p.telefono }}</span>{% endif %}
+            {% if p.curp %}<span class="mono">{{ p.curp }}</span>{% endif %}
+        </div>
+        <div class="pac-tags">
+            {% for x in padecimientos if x.estado != 'resuelto' %}<span class="pill pill-purple"><i class="fas fa-disease"></i> {{ x.nombre }}</span>{% endfor %}
+            {% if p.aseguradora %}<span class="pill pill-info"><i class="fas fa-shield-heart"></i> {{ p.aseguradora }}</span>{% endif %}
+        </div>
+        {% if alergias %}
+        <div class="alerta-alergias"><i class="fas fa-triangle-exclamation"></i> ALERGIAS:
+            {% for x in alergias %}<span>{{ x.alergeno }}{% if x.severidad == 'grave' %} (grave){% endif %}{{ ',' if not loop.last }}</span>{% endfor %}
+        </div>
+        {% endif %}
+    </div>
+    <div class="pac-actions">
+        <a class="btn btn-primary" href="{{ url_for('clinica.consulta_nueva', paciente_id=p.id) }}"><i class="fas fa-stethoscope"></i> Nueva consulta</a>
+        <a class="btn btn-glass" href="{{ url_for('clinica.receta_nueva', paciente_id=p.id) }}"><i class="fas fa-prescription"></i> Receta rápida</a>
+        <button class="btn btn-glass" data-toggle="modal" data-target="#modalCita"><i class="fas fa-calendar-plus"></i> Agendar cita</button>
+        <a class="btn btn-glass" href="{{ url_for('clinica.expediente_imprimir', paciente_id=p.id) }}" target="_blank" title="Imprimir o guardar como PDF"><i class="fas fa-file-pdf"></i> Expediente PDF</a>
+        <a class="btn btn-ghost btn-sm" href="{{ url_for('clinica.paciente_form', paciente_id=p.id) }}"><i class="fas fa-pen"></i> Editar datos</a>
+    </div>
+</section>
+
+<section class="grid-stats reveal reveal-3" style="margin-top:20px">
+    {{ ui.stat('Visitas', stats.visitas, 'fa-stethoscope', 'accent', ('desde ' ~ (stats.primera_visita|fecha)) if stats.primera_visita else 'Sin consultas') }}
+    {{ ui.stat('Última consulta', (ultima.fecha|fecha) if ultima else '—', 'fa-clock-rotate-left', 'blue', ultima.motivo if ultima else '') }}
+    {{ ui.stat('Padecimientos activos', stats.padecimientos_activos, 'fa-disease', 'purple') }}
+    {{ ui.stat('Estudios', stats.estudios, 'fa-flask', 'warning' if stats.estudios_pendientes else 'info', stats.estudios_pendientes ~ ' pendiente(s)') }}
+    {{ ui.stat('Recetas', stats.recetas, 'fa-prescription', 'success') }}
+</section>
+
+{# ===================== PESTAÑAS ===================== #}
+<div data-tabs>
+<nav class="tabbar glass">
+    <button data-tab="resumen"><i class="fas fa-house-medical"></i> Resumen</button>
+    <button data-tab="consultas"><i class="fas fa-stethoscope"></i> Consultas <span class="n">{{ consultas|length }}</span></button>
+    <button data-tab="padecimientos"><i class="fas fa-disease"></i> Padecimientos <span class="n">{{ padecimientos|length }}</span></button>
+    <button data-tab="medicamentos"><i class="fas fa-pills"></i> Medicamentos <span class="n">{{ medicamentos|selectattr('activo')|list|length }}</span></button>
+    <button data-tab="estudios"><i class="fas fa-flask"></i> Estudios <span class="n">{{ estudios|length }}</span></button>
+    <button data-tab="recetas"><i class="fas fa-prescription"></i> Recetas <span class="n">{{ recetas|length }}</span></button>
+    <button data-tab="signos"><i class="fas fa-heart-pulse"></i> Signos vitales</button>
+    <button data-tab="antecedentes"><i class="fas fa-book-medical"></i> Antecedentes</button>
+    <button data-tab="citas"><i class="fas fa-calendar-days"></i> Citas <span class="n">{{ citas|length }}</span></button>
+    <button data-tab="datos"><i class="fas fa-address-card"></i> Datos generales</button>
+</nav>
+
+{# ---------- RESUMEN ---------- #}
+<section data-panel="resumen" class="grid-3-1">
+    <div class="card-glass glass">
+        <div class="card-head"><h3 class="card-title"><span class="ico"><i class="fas fa-timeline"></i></span> Historial cronológico</h3></div>
+        {% if eventos %}
+        <div class="timeline">
+            {% for e in eventos %}
+            <div class="tl-item">
+                <span class="tl-dot bg-{{ e.color }}"><i class="fas {{ e.icono }}"></i></span>
+                <div class="when">{{ e.fecha|fecha_hora }}</div>
+                <div class="what">
+                    {% if e.tipo == 'consulta' %}<a href="{{ url_for('clinica.consulta_detalle', consulta_id=e.id) }}">{{ e.titulo }}</a>
+                    {% elif e.tipo == 'receta' %}<a href="{{ url_for('clinica.receta_imprimir', receta_id=e.id) }}" target="_blank">{{ e.titulo }}</a>
+                    {% else %}<a href="#" data-goto-tab="estudios">{{ e.titulo }}</a>{% endif %}
+                </div>
+                <div class="det">{{ e.detalle }}</div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}{{ ui.empty('Sin historial todavía', 'Inicia la primera consulta del paciente.', 'fa-timeline') }}{% endif %}
+    </div>
+    <aside>
+        <div class="card-glass glass">
+            <div class="card-head">
+                <h3 class="card-title"><span class="ico" style="background:rgba(229,72,77,.12);color:var(--danger)"><i class="fas fa-triangle-exclamation"></i></span> Alergias</h3>
+                <button class="btn btn-glass btn-sm" data-toggle="modal" data-target="#modalAlergia"><i class="fas fa-plus"></i></button>
+            </div>
+            {% for x in alergias %}
+            <div class="list-item">
+                <div class="grow"><div class="cell-title">{{ x.alergeno }} <span class="pill pill-{{ {'leve':'warning','moderada':'warning','grave':'danger'}[x.severidad] if x.severidad in ('leve','moderada','grave') else 'neutral' }}">{{ SEVERIDADES.get(x.severidad, x.severidad) }}</span></div>
+                    <div class="cell-sub">{{ TIPOS_ALERGIA.get(x.tipo, x.tipo) }}{% if x.reaccion %} · {{ x.reaccion }}{% endif %}</div></div>
+                {{ baja('alergia', x.id, 'la alergia a ' ~ x.alergeno) }}
+            </div>
+            {% else %}<div class="text-success fw-700"><i class="fas fa-circle-check"></i> Sin alergias conocidas</div>{% endfor %}
+        </div>
+        <div class="card-glass glass">
+            <div class="card-head"><h3 class="card-title"><span class="ico"><i class="fas fa-pills"></i></span> Tratamiento actual</h3>
+                <a href="#" class="btn btn-glass btn-sm" data-goto-tab="medicamentos">Ver</a></div>
+            {% for m in medicamentos if m.activo %}
+                <div class="list-item"><div class="grow"><div class="cell-title">{{ m.medicamento }}</div><div class="cell-sub">{{ m.dosis or '' }} {{ m.frecuencia or '' }} {{ m.via or '' }}</div></div></div>
+            {% else %}<div class="text-muted">Sin medicamentos activos.</div>{% endfor %}
+        </div>
+        {% if ultima %}
+        <div class="card-glass glass">
+            <div class="card-head"><h3 class="card-title"><span class="ico"><i class="fas fa-heart-pulse"></i></span> Últimos signos vitales</h3></div>
+            <div class="text-muted" style="font-size:.8rem">{{ ultima.fecha|fecha_hora }}</div>
+            {{ vitales_box(ultima) }}
+        </div>
+        {% endif %}
+    </aside>
+</section>
+
+{# ---------- CONSULTAS ---------- #}
+<section data-panel="consultas" hidden class="card-glass glass">
+    <div class="card-head">
+        <h3 class="card-title"><span class="ico"><i class="fas fa-stethoscope"></i></span> Consultas ({{ consultas|length }})</h3>
+        <a class="btn btn-primary btn-sm" href="{{ url_for('clinica.consulta_nueva', paciente_id=p.id) }}"><i class="fas fa-plus"></i> Nueva consulta</a>
+    </div>
+    {% for c in consultas %}
+    <article class="visita">
+        <div class="visita-head">
+            <div>
+                <div class="fw-800">{{ c.fecha|fecha('%d/%m/%Y · %H:%M') }} <span class="pill pill-accent">{{ c.tipo_texto }}</span> <span class="mono text-muted">{{ c.folio }}</span></div>
+                <div class="cell-sub">Atendió {{ c.medico }}{% if c.costo|num %} · {{ c.costo|money }} {% if c.venta_id %}<span class="pill pill-success">Pagada</span>{% else %}<a class="pill pill-warning" href="{{ url_for('ventas.punto_venta', consulta=c.id) }}" title="Cobrar en caja">Por cobrar</a>{% endif %}{% endif %}</div>
+            </div>
+            <a class="btn btn-glass btn-sm" href="{{ url_for('clinica.consulta_detalle', consulta_id=c.id) }}"><i class="fas fa-eye"></i> Ver nota completa</a>
+        </div>
+        <div style="margin-top:8px"><b>Motivo:</b> {{ c.motivo }}</div>
+        {{ vitales_box(c) }}
+        {% if c.diagnosticos %}<div>{% for d in c.diagnosticos %}<span class="pill pill-purple" style="margin:2px 4px 2px 0">{% if d.cie10 %}<span class="mono">{{ d.cie10 }}</span> {% endif %}{{ d.descripcion }}</span>{% endfor %}</div>
+        {% elif c.diagnostico %}<div><b>Dx:</b> {{ c.diagnostico }}</div>{% endif %}
+        {% if c.plan_tratamiento %}<div class="text-2" style="margin-top:6px;font-size:.88rem"><b>Plan:</b> {{ c.plan_tratamiento }}</div>{% endif %}
+    </article>
+    {% else %}{{ ui.empty('Sin consultas registradas', '', 'fa-stethoscope') }}{% endfor %}
+</section>
+
+{# ---------- PADECIMIENTOS ---------- #}
+<section data-panel="padecimientos" hidden class="card-glass glass">
+    <div class="card-head">
+        <h3 class="card-title"><span class="ico"><i class="fas fa-disease"></i></span> Lista de problemas / padecimientos</h3>
+        <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#modalPadecimiento"><i class="fas fa-plus"></i> Agregar</button>
+    </div>
+    <div class="table-wrap"><table class="table">
+        <thead><tr><th>Padecimiento</th><th>CIE-10</th><th>Tipo</th><th>Diagnóstico</th><th>Estado</th><th class="num">Acciones</th></tr></thead>
+        <tbody>
+        {% for x in padecimientos %}
+            <tr>
+                <td><div class="cell-title">{{ x.nombre }}</div>{% if x.notas %}<div class="cell-sub">{{ x.notas }}</div>{% endif %}</td>
+                <td class="mono">{{ x.cie10 or '—' }}</td>
+                <td>{{ 'Crónico' if x.tipo == 'cronico' else 'Agudo' }}</td>
+                <td class="text-2">{{ x.fecha_diagnostico|fecha if x.fecha_diagnostico else '—' }}</td>
+                <td>{{ estado_pill(x.estado) }}</td>
+                <td class="num" style="white-space:nowrap">
+                    <form method="POST" action="{{ url_for('clinica.padecimiento_estado', paciente_id=p.id, item_id=x.id) }}" class="d-inline">
+                        <select name="estado" class="form-control" style="display:inline-block;width:auto;padding:6px 30px 6px 10px;font-size:.8rem" data-autosubmit>
+                            {% for k, v in ESTADOS_PADECIMIENTO.items() %}<option value="{{ k }}" {{ 'selected' if x.estado == k }}>{{ v }}</option>{% endfor %}
+                        </select>
+                    </form>
+                    {{ baja('padecimiento', x.id, x.nombre) }}
+                </td>
+            </tr>
+        {% else %}{{ ui.empty_row(6, 'Sin padecimientos registrados', 'Se agregan aquí o desde el diagnóstico de una consulta.', 'fa-disease') }}{% endfor %}
+        </tbody>
+    </table></div>
+</section>
+
+{# ---------- MEDICAMENTOS ---------- #}
+<section data-panel="medicamentos" hidden class="card-glass glass">
+    <div class="card-head">
+        <h3 class="card-title"><span class="ico"><i class="fas fa-pills"></i></span> Medicamentos de uso actual</h3>
+        <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#modalMedicamento"><i class="fas fa-plus"></i> Agregar</button>
+    </div>
+    <div class="table-wrap"><table class="table">
+        <thead><tr><th>Medicamento</th><th>Dosis</th><th>Frecuencia</th><th>Vía</th><th>Desde</th><th>Estado</th><th class="num"></th></tr></thead>
+        <tbody>
+        {% for m in medicamentos %}
+            <tr style="{{ 'opacity:.55' if not m.activo }}">
+                <td class="cell-title">{{ m.medicamento }}<div class="cell-sub">{{ m.indicado_por or '' }}</div></td>
+                <td>{{ m.dosis or '—' }}</td><td>{{ m.frecuencia or '—' }}</td><td>{{ m.via or '—' }}</td>
+                <td class="text-2">{{ m.fecha_inicio|fecha if m.fecha_inicio else '—' }}</td>
+                <td>{% if m.activo %}<span class="pill pill-success">Activo</span>{% else %}<span class="pill pill-neutral">Suspendido {{ m.fecha_fin|fecha if m.fecha_fin else '' }}</span>{% endif %}</td>
+                <td class="num" style="white-space:nowrap">
+                    {% if m.activo %}<form method="POST" action="{{ url_for('clinica.medicamento_suspender', paciente_id=p.id, item_id=m.id) }}" class="d-inline"><button class="btn btn-glass btn-sm">Suspender</button></form>{% endif %}
+                    {{ baja('medicamento', m.id, m.medicamento) }}
+                </td>
+            </tr>
+        {% else %}{{ ui.empty_row(7, 'Sin medicamentos registrados', '', 'fa-pills') }}{% endfor %}
+        </tbody>
+    </table></div>
+</section>
+
+{# ---------- ESTUDIOS ---------- #}
+<section data-panel="estudios" hidden class="card-glass glass">
+    <div class="card-head">
+        <h3 class="card-title"><span class="ico"><i class="fas fa-flask"></i></span> Estudios de laboratorio, imagen y gabinete</h3>
+        <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#modalEstudio"><i class="fas fa-plus"></i> Solicitar estudio</button>
+    </div>
+    <div class="table-wrap"><table class="table">
+        <thead><tr><th>Estudio</th><th>Tipo</th><th>Solicitado</th><th>Estado</th><th>Resultado</th><th class="num">Acciones</th></tr></thead>
+        <tbody>
+        {% for e in estudios %}
+            <tr>
+                <td class="cell-title">{{ e.nombre }}<div class="cell-sub">{{ e.laboratorio or '' }}</div></td>
+                <td><span class="pill pill-info">{{ TIPOS_ESTUDIO.get(e.tipo, e.tipo) }}</span></td>
+                <td class="text-2">{{ e.fecha_solicitud|fecha if e.fecha_solicitud else '—' }}</td>
+                <td>{{ estudio_pill(e.estado) }}{% if e.fecha_resultado %}<div class="cell-sub">{{ e.fecha_resultado|fecha }}</div>{% endif %}</td>
+                <td style="max-width:320px">{% if e.resultado %}<div style="white-space:pre-line;font-size:.86rem">{{ e.resultado }}</div>{% endif %}
+                    {% if e.interpretacion %}<div class="cell-sub"><i class="fas fa-user-doctor"></i> {{ e.interpretacion }}</div>{% endif %}
+                    {% if e.archivo %}<a href="{{ url_for('clinica.estudio_archivo', estudio_id=e.id) }}" target="_blank" class="pill pill-accent" style="margin-top:4px"><i class="fas fa-paperclip"></i> {{ e.archivo_nombre or 'Archivo' }}</a>{% endif %}
+                    {% if not e.resultado and not e.archivo %}<span class="text-muted">—</span>{% endif %}</td>
+                <td class="num" style="white-space:nowrap">
+                    <button class="btn btn-glass btn-sm" data-toggle="modal" data-target="#modalResultado"
+                            data-modal-fill='{{ {"_action": url_for("clinica.estudio_resultado", estudio_id=e.id), "nombre": e.nombre, "estado": "resultado" if e.estado in ("solicitado","en_proceso") else e.estado, "laboratorio": e.laboratorio, "resultado": e.resultado, "interpretacion": e.interpretacion, "fecha_resultado": e.fecha_resultado|string if e.fecha_resultado else ""}|tojson }}'>
+                        <i class="fas fa-file-medical"></i> Resultado</button>
+                    {{ baja('estudio', e.id, e.nombre) }}
+                </td>
+            </tr>
+        {% else %}{{ ui.empty_row(6, 'Sin estudios', 'Solicítalos aquí o durante la consulta.', 'fa-flask') }}{% endfor %}
+        </tbody>
+    </table></div>
+</section>
+
+{# ---------- RECETAS ---------- #}
+<section data-panel="recetas" hidden class="card-glass glass">
+    <div class="card-head">
+        <h3 class="card-title"><span class="ico"><i class="fas fa-prescription"></i></span> Recetas emitidas</h3>
+        <a class="btn btn-primary btn-sm" href="{{ url_for('clinica.receta_nueva', paciente_id=p.id) }}"><i class="fas fa-plus"></i> Nueva receta</a>
+    </div>
+    {% for r in recetas %}
+    <article class="visita">
+        <div class="visita-head">
+            <div><span class="fw-800 mono">{{ r.folio }}</span> · {{ r.fecha|fecha_hora }}{% if r.diagnostico %}<div class="cell-sub">Dx: {{ r.diagnostico }}</div>{% endif %}</div>
+            <div class="d-flex" style="gap:6px">
+                {% if r.venta_id %}<span class="pill pill-success" title="{{ r.surtida_at|fecha_hora }}"><i class="fas fa-check"></i> Surtida</span>
+                {% else %}<a class="btn btn-ghost btn-sm" href="{{ url_for('ventas.punto_venta', receta=r.id) }}"><i class="fas fa-cash-register"></i> Surtir</a>{% endif %}
+                {% if r.consulta_id %}<a class="btn btn-ghost btn-sm" href="{{ url_for('clinica.consulta_detalle', consulta_id=r.consulta_id) }}">Consulta</a>{% endif %}
+                <a class="btn btn-glass btn-sm" href="{{ url_for('clinica.receta_imprimir', receta_id=r.id) }}" target="_blank"><i class="fas fa-print"></i> Imprimir</a>
+            </div>
+        </div>
+        <ol style="margin:10px 0 0;padding-left:20px">
+            {% for m in r.medicamentos %}<li><b>{{ m.medicamento }}</b> {{ m.presentacion or '' }} — {{ m.dosis or '' }} {{ m.via or '' }} {{ m.frecuencia or '' }} {{ ('por ' ~ m.duracion) if m.duracion }}</li>{% endfor %}
+        </ol>
+    </article>
+    {% else %}{{ ui.empty('Sin recetas', '', 'fa-prescription') }}{% endfor %}
+</section>
+
+{# ---------- SIGNOS VITALES ---------- #}
+<section data-panel="signos" hidden>
+    {% if vitales|length >= 1 %}
+    <div class="grid-2">
+        <div class="card-glass glass"><div class="card-head"><h3 class="card-title"><span class="ico"><i class="fas fa-weight-scale"></i></span> Peso e IMC</h3></div><div class="chart-box sm"><canvas id="chPeso"></canvas></div></div>
+        <div class="card-glass glass"><div class="card-head"><h3 class="card-title"><span class="ico"><i class="fas fa-heart-pulse"></i></span> Presión arterial</h3></div><div class="chart-box sm"><canvas id="chTA"></canvas></div></div>
+        <div class="card-glass glass"><div class="card-head"><h3 class="card-title"><span class="ico"><i class="fas fa-droplet"></i></span> Glucosa capilar</h3></div><div class="chart-box sm"><canvas id="chGlu"></canvas></div></div>
+        <div class="card-glass glass"><div class="card-head"><h3 class="card-title"><span class="ico"><i class="fas fa-table"></i></span> Registro</h3></div>
+            <div class="table-wrap table-scroll" style="max-height:220px"><table class="table">
+                <thead><tr><th>Fecha</th><th class="num">Peso</th><th class="num">IMC</th><th class="num">T/A</th><th class="num">FC</th><th class="num">Glu</th></tr></thead>
+                <tbody>{% for c in vitales|reverse %}<tr><td>{{ c.fecha|fecha }}</td><td class="num">{{ c.peso_kg|numero(1) if c.peso_kg else '—' }}</td><td class="num">{{ c.imc|numero(1) if c.imc else '—' }}</td><td class="num">{{ (c.ta_sistolica ~ '/' ~ c.ta_diastolica) if c.ta_sistolica else '—' }}</td><td class="num">{{ c.frecuencia_cardiaca or '—' }}</td><td class="num">{{ c.glucosa_capilar or '—' }}</td></tr>{% endfor %}</tbody>
+            </table></div>
+        </div>
+    </div>
+    {% else %}<div class="card-glass glass">{{ ui.empty('Sin signos vitales registrados', 'Se capturan en cada consulta.', 'fa-heart-pulse') }}</div>{% endif %}
+</section>
+
+{# ---------- ANTECEDENTES ---------- #}
+<section data-panel="antecedentes" hidden class="card-glass glass">
+    <form method="POST" action="{{ url_for('clinica.antecedentes', paciente_id=p.id) }}" data-loading>
+        <div class="card-head">
+            <h3 class="card-title"><span class="ico"><i class="fas fa-book-medical"></i></span> Historia clínica · antecedentes</h3>
+            <button class="btn btn-primary btn-sm"><i class="fas fa-floppy-disk"></i> Guardar antecedentes</button>
+        </div>
+        <div class="row">
+            {% for campo, etiqueta, ph in [
+                ('heredofamiliares', 'Heredofamiliares', 'Diabetes, hipertensión, cáncer, cardiopatías en familiares…'),
+                ('personales_patologicos', 'Personales patológicos', 'Enfermedades previas, hospitalizaciones…'),
+                ('personales_no_patologicos', 'Personales no patológicos', 'Vivienda, higiene, mascotas…'),
+                ('quirurgicos', 'Quirúrgicos', 'Cirugías y fecha'),
+                ('traumaticos', 'Traumáticos', 'Fracturas, accidentes'),
+                ('transfusionales', 'Transfusionales', 'Transfusiones previas'),
+                ('gineco_obstetricos', 'Gineco-obstétricos', 'Menarca, G/P/C/A, FUM, MPF, menopausia'),
+                ('inmunizaciones', 'Inmunizaciones', 'Esquema de vacunación')] %}
+            <div class="col-md-6 form-group"><label>{{ etiqueta }}</label><textarea name="{{ campo }}" class="form-control" rows="2" placeholder="{{ ph }}">{{ a[campo] or '' }}</textarea></div>
+            {% endfor %}
+            {% for campo, etiqueta, ph in [('tabaquismo','Tabaquismo','Negado / cig. por día y años'),('alcoholismo','Alcoholismo','Negado / ocasional / frecuencia'),('toxicomanias','Toxicomanías','Negadas'),('actividad_fisica','Actividad física','Tipo y frecuencia'),('alimentacion','Alimentación','Calidad y hábitos')] %}
+            <div class="col-md-4 form-group"><label>{{ etiqueta }}</label><input name="{{ campo }}" class="form-control" value="{{ a[campo] or '' }}" placeholder="{{ ph }}"></div>
+            {% endfor %}
+        </div>
+        {% if a.updated_at %}<p class="form-hint">Última actualización: {{ a.updated_at|fecha_hora }}</p>{% endif %}
+    </form>
+</section>
+
+{# ---------- CITAS ---------- #}
+<section data-panel="citas" hidden class="card-glass glass">
+    <div class="card-head">
+        <h3 class="card-title"><span class="ico"><i class="fas fa-calendar-days"></i></span> Citas</h3>
+        <button class="btn btn-primary btn-sm" data-toggle="modal" data-target="#modalCita"><i class="fas fa-calendar-plus"></i> Agendar</button>
+    </div>
+    {% for c in citas %}
+    <div class="cita-row">
+        <div><div class="cita-hora">{{ c.fecha_hora|hora }}</div><div class="cell-sub">{{ c.fecha_hora|fecha }}</div></div>
+        <div><div class="cell-title">{{ c.motivo or 'Consulta' }}</div>{% if c.notas %}<div class="cell-sub">{{ c.notas }}</div>{% endif %}</div>
+        <form method="POST" action="{{ url_for('clinica.cita_estado', cita_id=c.id) }}" class="d-flex" style="gap:6px">
+            <select name="estado" class="form-control" style="width:auto;padding:6px 30px 6px 10px;font-size:.8rem" data-autosubmit>
+                {% for k, v in ESTADOS_CITA.items() %}<option value="{{ k }}" {{ 'selected' if c.estado == k }}>{{ v }}</option>{% endfor %}
+            </select>
+            {% if c.consulta_id %}<a class="btn btn-glass btn-sm" href="{{ url_for('clinica.consulta_detalle', consulta_id=c.consulta_id) }}">Consulta</a>{% endif %}
+        </form>
+    </div>
+    {% else %}{{ ui.empty('Sin citas', '', 'fa-calendar') }}{% endfor %}
+</section>
+
+{# ---------- DATOS GENERALES ---------- #}
+<section data-panel="datos" hidden class="card-glass glass">
+    <div class="card-head">
+        <h3 class="card-title"><span class="ico"><i class="fas fa-address-card"></i></span> Datos generales</h3>
+        <div class="d-flex" style="gap:8px">
+            <a class="btn btn-glass btn-sm" href="{{ url_for('clinica.paciente_form', paciente_id=p.id) }}"><i class="fas fa-pen"></i> Editar</a>
+            <form method="POST" action="{{ url_for('clinica.paciente_baja', paciente_id=p.id) }}" data-confirm="¿Dar de baja a {{ p.nombre_completo }}?" data-confirm-text="Dejará de aparecer en la lista. Su historial se conserva." data-confirm-ok="Dar de baja">
+                <button class="btn btn-ghost btn-sm text-danger"><i class="fas fa-user-slash"></i> Dar de baja</button>
+            </form>
+        </div>
+    </div>
+    <dl class="dl-grid">
+        {% for etiqueta, valor in [('Nombre completo', p.nombre_completo), ('Fecha de nacimiento', p.fecha_nacimiento|fecha if p.fecha_nacimiento else None), ('CURP', p.curp), ('Estado civil', p.estado_civil), ('Ocupación', p.ocupacion), ('Escolaridad', p.escolaridad), ('Teléfono', p.telefono), ('Teléfono alterno', p.telefono_alt), ('Correo', p.email), ('Domicilio', [p.direccion, p.ciudad, p.codigo_postal]|select|join(', ')), ('Contacto de emergencia', (p.contacto_nombre or '') ~ ((' (' ~ p.contacto_parentesco ~ ')') if p.contacto_parentesco else '') ~ ((' · ' ~ p.contacto_telefono) if p.contacto_telefono else '')), ('Aseguradora / póliza', [p.aseguradora, p.poliza]|select|join(' · ')), ('Notas', p.notas)] %}
+        <dt>{{ etiqueta }}</dt><dd>{{ valor or '—' }}</dd>
+        {% endfor %}
+    </dl>
+</section>
+</div>
+{% endblock %}
+
+{% block modals %}
+{% macro modal(id, titulo, accion, icono='fa-plus') %}
+<div class="modal fade" id="{{ id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form method="POST" action="{{ accion }}" class="modal-content" data-loading>
+            <div class="modal-header"><h5 class="modal-title"><i class="fas {{ icono }} text-accent"></i> {{ titulo }}</h5><button type="button" class="close" data-dismiss="modal">&times;</button></div>
+            <div class="modal-body">{{ caller() }}</div>
+            <div class="modal-footer"><button type="button" class="btn btn-ghost" data-dismiss="modal">Cancelar</button><button class="btn btn-primary"><i class="fas fa-floppy-disk"></i> Guardar</button></div>
+        </form>
+    </div>
+</div>
+{% endmacro %}
+
+{% call modal('modalAlergia', 'Registrar alergia', url_for('clinica.alergia_nueva', paciente_id=paciente.id), 'fa-triangle-exclamation') %}
+    <div class="form-group"><label>Alérgeno *</label><input name="alergeno" class="form-control" required placeholder="Ej. Penicilina, mariscos, polen"></div>
+    <div class="row">
+        <div class="col-6 form-group"><label>Tipo</label><select name="tipo" class="form-control">{% for k, v in TIPOS_ALERGIA.items() %}<option value="{{ k }}">{{ v }}</option>{% endfor %}</select></div>
+        <div class="col-6 form-group"><label>Severidad</label><select name="severidad" class="form-control">{% for k, v in SEVERIDADES.items() %}<option value="{{ k }}" {{ 'selected' if k == 'moderada' }}>{{ v }}</option>{% endfor %}</select></div>
+    </div>
+    <div class="form-group" style="margin:0"><label>Reacción</label><input name="reaccion" class="form-control" placeholder="Ej. Urticaria, anafilaxia"></div>
+{% endcall %}
+
+{% call modal('modalPadecimiento', 'Agregar padecimiento', url_for('clinica.padecimiento_nuevo', paciente_id=paciente.id), 'fa-disease') %}
+    <div class="row">
+        <div class="col-8 form-group"><label>Padecimiento *</label><input name="nombre" class="form-control" list="cie10-list" required placeholder="Escribe o elige del catálogo CIE-10"></div>
+        <div class="col-4 form-group"><label>CIE-10</label><input name="cie10" class="form-control mono" list="cie10-codes" placeholder="E11.9"></div>
+        <div class="col-4 form-group"><label>Tipo</label><select name="tipo" class="form-control"><option value="cronico">Crónico</option><option value="agudo">Agudo</option></select></div>
+        <div class="col-4 form-group"><label>Estado</label><select name="estado" class="form-control">{% for k, v in ESTADOS_PADECIMIENTO.items() %}<option value="{{ k }}">{{ v }}</option>{% endfor %}</select></div>
+        <div class="col-4 form-group"><label>Diagnosticado</label><input type="date" name="fecha_diagnostico" class="form-control" value="{{ hoy }}"></div>
+    </div>
+    <div class="form-group" style="margin:0"><label>Notas / metas de control</label><textarea name="notas" class="form-control" rows="2"></textarea></div>
+{% endcall %}
+
+{% call modal('modalMedicamento', 'Agregar medicamento de uso actual', url_for('clinica.medicamento_nuevo', paciente_id=paciente.id), 'fa-pills') %}
+    <div class="form-group"><label>Medicamento *</label><input name="medicamento" class="form-control" required placeholder="Ej. Metformina 850 mg"></div>
+    <div class="row">
+        <div class="col-4 form-group"><label>Dosis</label><input name="dosis" class="form-control" placeholder="1 tableta"></div>
+        <div class="col-4 form-group"><label>Frecuencia</label><input name="frecuencia" class="form-control" placeholder="Cada 12 h"></div>
+        <div class="col-4 form-group"><label>Vía</label><select name="via" class="form-control">{% for v in VIAS %}<option>{{ v }}</option>{% endfor %}</select></div>
+        <div class="col-6 form-group"><label>Desde</label><input type="date" name="fecha_inicio" class="form-control" value="{{ hoy }}"></div>
+        <div class="col-6 form-group"><label>Indicado por</label><input name="indicado_por" class="form-control" placeholder="Médico tratante"></div>
+    </div>
+{% endcall %}
+
+{% call modal('modalEstudio', 'Solicitar estudio', url_for('clinica.estudio_nuevo', paciente_id=paciente.id), 'fa-flask') %}
+    <div class="row">
+        <div class="col-4 form-group"><label>Tipo</label><select name="tipo" class="form-control">{% for k, v in TIPOS_ESTUDIO.items() %}<option value="{{ k }}">{{ v }}</option>{% endfor %}</select></div>
+        <div class="col-8 form-group"><label>Estudio *</label><input name="nombre" class="form-control" list="estudios-list" required placeholder="Ej. Biometría hemática"></div>
+        <div class="col-6 form-group" style="margin:0"><label>Fecha de solicitud</label><input type="date" name="fecha_solicitud" class="form-control" value="{{ hoy }}"></div>
+        <div class="col-6 form-group" style="margin:0"><label>Laboratorio</label><input name="laboratorio" class="form-control"></div>
+    </div>
+{% endcall %}
+
+{% call modal('modalCita', 'Agendar cita', url_for('clinica.cita_nueva', paciente_id=paciente.id), 'fa-calendar-plus') %}
+    <div class="row">
+        <div class="col-7 form-group"><label>Fecha y hora *</label><input type="datetime-local" name="fecha_hora" class="form-control" required></div>
+        <div class="col-5 form-group"><label>Duración (min)</label><input type="number" name="duracion_min" class="form-control" value="30" min="5" step="5"></div>
+    </div>
+    <div class="form-group"><label>Motivo</label><input name="motivo" class="form-control" placeholder="Ej. Control de diabetes"></div>
+    <div class="form-group" style="margin:0"><label>Notas</label><input name="notas" class="form-control"></div>
+{% endcall %}
+
+{% include "clinica/_modal_resultado.html" %}
+<datalist id="cie10-list"></datalist><datalist id="cie10-codes"></datalist><datalist id="estudios-list"></datalist>
+{% endblock %}
+
+{% block clinica_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    CL.cargarCie10().then(function () { CL.enlazarCie10(document.getElementById('modalPadecimiento')); });
+    CL.cargarEstudios();
+    if (!window.Chart) return;
+    var V = {{ vitales|map(attribute='fecha')|map('fecha', '%d/%m/%y')|list|tojson }};
+    var peso = {{ vitales|map(attribute='peso_kg')|map('num')|list|tojson }};
+    var imc = {{ vitales|map(attribute='imc')|map('num')|list|tojson }};
+    var sis = {{ vitales|map(attribute='ta_sistolica')|map('num')|list|tojson }};
+    var dia = {{ vitales|map(attribute='ta_diastolica')|map('num')|list|tojson }};
+    var glu = {{ vitales|map(attribute='glucosa_capilar')|map('num')|list|tojson }};
+    var z = function (a) { return a.map(function (x) { return x || null; }); };
+    var graficas = [];
+    function dibujar() {
+        FC.chartDefaults(); var c = FC.chartColors();
+        graficas.forEach(function (g) { g.destroy(); }); graficas = [];
+        var linea = function (id, sets, extra) {
+            var el = document.getElementById(id); if (!el) return;
+            graficas.push(new Chart(el, { type: 'line', data: { labels: V, datasets: sets.map(function (s) { return Object.assign({ tension: .35, borderWidth: 3, pointRadius: 4, spanGaps: true, pointBackgroundColor: '#fff' }, s); }) },
+                options: Object.assign({ plugins: { legend: { position: 'bottom' } } }, extra || {}) }));
+        };
+        linea('chPeso', [{ label: 'Peso (kg)', data: z(peso), borderColor: c.accent, yAxisID: 'y' }, { label: 'IMC', data: z(imc), borderColor: c.series[2], yAxisID: 'y1' }],
+              { scales: { y: { position: 'left' }, y1: { position: 'right', grid: { display: false } } } });
+        linea('chTA', [{ label: 'Sistólica', data: z(sis), borderColor: c.series[4] }, { label: 'Diastólica', data: z(dia), borderColor: c.series[1] }]);
+        linea('chGlu', [{ label: 'Glucosa (mg/dL)', data: z(glu), borderColor: c.series[3] }]);
+    }
+    var hecho = false;
+    var intentar = function () { var panel = document.querySelector('[data-panel="signos"]'); if (panel && !panel.hidden && !hecho) { hecho = true; dibujar(); } };
+    document.querySelectorAll('[data-tab="signos"]').forEach(function (b) { b.addEventListener('click', function () { setTimeout(intentar, 30); }); });
+    intentar();
+    document.addEventListener('fc:theme', function () { if (hecho) dibujar(); });
+});
+</script>
+{% endblock %}
