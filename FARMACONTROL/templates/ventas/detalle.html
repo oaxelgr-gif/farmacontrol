@@ -6,7 +6,8 @@
 {% block page_title %}<span class="mono" style="font-size:.85em">{{ venta.folio }}</span>{% endblock %}
 {% block page_sub %}<p class="page-sub">{{ venta.fecha|fecha('%d/%m/%Y · %H:%M') }} · Atendió {{ venta.vendedor }}</p>{% endblock %}
 {% block page_actions %}
-<button class="btn btn-primary no-print" onclick="verTicket({{ venta.id }}, '{{ venta.folio }}')"><i class="fas fa-print"></i> Reimprimir <kbd style="background:rgba(255,255,255,.25);color:#fff;border:0">F12</kbd></button>
+<button class="btn btn-primary no-print" onclick="reimprimirTicket({{ venta.id }})" title="Imprime el ticket marcado como reimpresión"><i class="fas fa-print"></i> Reimprimir ticket <kbd style="background:rgba(255,255,255,.25);color:#fff;border:0">F12</kbd></button>
+<a class="btn btn-glass no-print" href="#ticket"><i class="fas fa-receipt"></i> Ver ticket</a>
 {% if es_admin %}<button class="btn btn-glass no-print" onclick="window.print()"><i class="fas fa-file-pdf"></i> PDF</button>{% endif %}
 {% endblock %}
 
@@ -21,7 +22,7 @@
     {{ ui.stat('Método de pago', venta.metodo_pago, icono_metodo(venta.metodo_pago), clase_metodo(venta.metodo_pago) if clase_metodo(venta.metodo_pago) != 'neutral' else 'neutral') }}
 </section>
 
-<section class="grid-3-1 reveal reveal-3">
+<section class="grid-3-1 reveal reveal-3" style="align-items:start">
     <div class="card-glass glass">
         <div class="card-head"><h2 class="card-title"><span class="ico"><i class="fas fa-list"></i></span> Conceptos vendidos</h2></div>
         <div class="table-wrap">
@@ -68,6 +69,13 @@
             {% if es_admin %}<div class="kv"><span>Costo total</span><b>{{ total_costo|money }}</b></div>{% endif %}
         </div>
 
+        <div class="card-glass glass no-print" id="ticket">
+            <div class="card-head"><h2 class="card-title"><span class="ico"><i class="fas fa-receipt"></i></span> Ticket</h2>
+                <button class="btn btn-glass btn-sm" onclick="verTicket({{ venta.id }}, '{{ venta.folio }}')" title="Ver en grande"><i class="fas fa-up-right-and-down-left-from-center"></i></button></div>
+            <iframe class="ticket-embebido" src="{{ url_for('ventas.reimprimir_ticket', venta_id=venta.id) }}" title="Ticket {{ venta.folio }}" loading="lazy"></iframe>
+            <button class="btn btn-primary btn-block" style="margin-top:10px" onclick="reimprimirTicket({{ venta.id }})"><i class="fas fa-print"></i> Reimprimir ticket</button>
+        </div>
+
         <div class="card-glass glass">
             <div class="card-head"><h2 class="card-title"><span class="ico"><i class="fas fa-user"></i></span> Cliente</h2></div>
             {% if venta.cliente and venta.cliente_id != 1 %}
@@ -89,6 +97,18 @@
                         <ul style="margin:6px 0 0;padding-left:18px">{% for a in antibioticos %}<li>{{ a.producto_nombre }} ({{ a.cantidad }} u.)</li>{% endfor %}</ul>
                     </div>
                 </div>
+                {% if registro_ab %}
+                <div class="kv"><span class="text-2">Paciente</span><b>{{ registro_ab.paciente_nombre|upper }}</b></div>
+                <div class="kv"><span class="text-2">Médico</span><b>{{ registro_ab.medico_nombre }}</b></div>
+                <div class="kv"><span class="text-2">Cédula</span><b class="mono">{{ registro_ab.medico_cedula }}</b></div>
+                {% if registro_ab.institucion %}<div class="kv"><span class="text-2">Institución</span><span>{{ registro_ab.institucion }}</span></div>{% endif %}
+                {% if registro_ab.medico_domicilio %}<div class="kv"><span class="text-2">Domicilio</span><span>{{ registro_ab.medico_domicilio }}</span></div>{% endif %}
+                {% if registro_ab.receta_folio or registro_ab.receta_fecha %}<div class="kv"><span class="text-2">Receta</span><span>{{ registro_ab.receta_folio or '' }} {{ registro_ab.receta_fecha|fecha if registro_ab.receta_fecha else '' }}</span></div>{% endif %}
+                <div class="kv"><span class="text-2">Vale de salida</span><b>{{ 'SÍ' if registro_ab.vale_salida else 'NO' }}</b></div>
+                <div class="kv"><span class="text-2">Se recoge receta</span><span class="pill pill-info">{{ 'SÍ' if registro_ab.destino_receta == 'retenida' else 'NO' }}</span></div>
+                {% else %}
+                <div class="cell-sub" style="margin-top:8px"><i class="fas fa-circle-info"></i> Venta registrada antes del control de recetas.</div>
+                {% endif %}
             {% else %}
                 <div class="text-success fw-700"><i class="fas fa-circle-check"></i> Sin antibióticos</div>
             {% endif %}

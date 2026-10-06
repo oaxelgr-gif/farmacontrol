@@ -26,10 +26,9 @@
     <div class="card-glass glass">
         <div class="card-head">
             <h2 class="card-title"><span class="ico"><i class="fas fa-address-book"></i></span> Clientes</h2>
-            <input type="search" class="form-control no-print" style="max-width:240px" placeholder="Filtrar…" data-table-filter="#tablaCli">
         </div>
         <div class="table-wrap table-scroll" style="max-height:600px">
-            <table class="table" id="tablaCli">
+            <table class="table" id="tablaCli" data-tabla="Clientes y fidelidad">
                 <thead><tr><th>Cliente</th><th>Contacto</th><th class="num">Compras</th><th class="num">Gastado</th><th class="num">Promedio</th><th>Última compra</th><th>Favorito</th></tr></thead>
                 <tbody>
                 {% for c in tabla %}

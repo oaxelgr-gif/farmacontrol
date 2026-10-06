@@ -224,7 +224,8 @@ def _venta_por_api(data):
                         "cant": int(it.get("cant") or it.get("cantidad") or 0)})
     payload = {"carrito": carrito, "metodo_pago_id": int(data.get("metodo_pago_id") or 0),
                "pago": data.get("pago"), "cliente_id": data.get("cliente_id") or None,
-               "receta_id": data.get("receta_id") or None, "paciente_id": data.get("paciente_id") or None}
+               "receta_id": data.get("receta_id") or None, "paciente_id": data.get("paciente_id") or None,
+               "antibiotico": data.get("antibiotico") or None}
     code, cuerpo = api_client.llamar("POST", "/v1/ventas", json=payload)
     if code != 201:
         return jsonify(success=False, message=api_client.mensaje(cuerpo, "No se pudo registrar la venta"))
@@ -250,3 +251,26 @@ def cuenta_paciente():
     except clinica_caja.CuentaError as exc:
         return jsonify(success=False, message=str(exc))
     return jsonify(success=True, data=datos)
+
+
+
+# ---------------------------------------------------------------- antibióticos (POS)
+@bp.route("/antibioticos/productos")
+@login_required
+def antibioticos_productos():
+    from ...services import antibioticos as svc_ab
+    return jsonify(svc_ab.productos_info((request.args.get("ids") or "").split(",")))
+
+
+@bp.route("/antibioticos/medicos")
+@login_required
+def antibioticos_medicos():
+    from ...services import antibioticos as svc_ab
+    return jsonify(svc_ab.medicos(request.args.get("q", "")))
+
+
+@bp.route("/antibioticos/pacientes")
+@login_required
+def antibioticos_pacientes():
+    from ...services import antibioticos as svc_ab
+    return jsonify(svc_ab.pacientes(request.args.get("q", "")))

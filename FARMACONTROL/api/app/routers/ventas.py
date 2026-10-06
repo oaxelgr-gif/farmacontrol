@@ -18,7 +18,8 @@ router = APIRouter(prefix="/ventas", tags=["Ventas"])
                          "y registra todo en una sola transacción.")
 def crear(venta: VentaCrear, conn=Depends(get_db), usuario: UsuarioActual = Depends(usuario_actual)):
     return svc.procesar(conn, [i.model_dump() for i in venta.carrito], venta.metodo_pago_id,
-                        usuario.id, venta.pago, venta.cliente_id, venta.receta_id, venta.paciente_id)
+                        usuario.id, venta.pago, venta.cliente_id, venta.receta_id, venta.paciente_id,
+                        venta.antibiotico)
 
 
 @router.get("", response_model=List[VentaResumen], summary="Historial de ventas")

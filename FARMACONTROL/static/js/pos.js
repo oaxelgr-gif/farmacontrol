@@ -13,7 +13,8 @@
     itemsModal: [],
     tipoModal: null,
     ventaActual: null,
-    cuenta: null          // cuenta de paciente del consultorio (receta / honorarios)
+    cuenta: null,         // cuenta de paciente del consultorio (receta / honorarios)
+    registroAb: null      // datos de la receta de antibióticos (control sanitario)
   };
   var TIPO_PILL = { servicio: ['Servicio', 'info'], consulta: ['Consulta', 'info'], honorario: ['Honorarios', 'accent'] };
 
@@ -223,19 +224,114 @@
   /* ---------------- cobro ---------------- */
   function cobrar() {
     if (!state.carrito.length || modalAbierto()) return;
-    var abs = antibioticos();
     var seguir = function () {
       document.getElementById('modal-total-display').textContent = FC.money(state.total);
       $('#modalMetodoPago').modal('show');
     };
-    if (!abs.length) { seguir(); return; }
-    FC.swal({
-      icon: 'warning', title: 'Venta con antibióticos',
-      html: '<div style="text-align:left"><p>Esta venta incluye:</p><ul>' +
-        abs.map(function (a) { return '<li><b>' + esc(a.nombre) + '</b> · ' + a.cant + ' u.</li>'; }).join('') + '</ul>' +
-        '<div class="alert alert-warning" style="font-size:.86rem"><i class="fas fa-stethoscope text-warning"></i><div>Verifica que el cliente presente <b>receta médica vigente</b>, que coincida con el producto y con los datos del paciente.</div></div></div>',
-      showCancelButton: true, confirmButtonText: 'Receta verificada', cancelButtonText: 'Revisar'
-    }).then(function (r) { if (r.isConfirmed) seguir(); });
+    if (!antibioticos().length) { state.registroAb = null; seguir(); return; }
+    abrirRegistroAb(seguir);
+  }
+
+  /* ---------------- control de antibióticos ---------------- */
+  var abContinuar = null;
+  function abForm() { return document.getElementById('formAntibiotico'); }
+  function abSet(nombre, valor) { var el = abForm().elements[nombre]; if (el && el.type !== 'checkbox' && valor != null && !el.value) el.value = valor; }
+  function abPacienteTag() {
+    var f = abForm(), interno = !!f.elements.paciente_id.value;
+    document.getElementById('abPacienteTag').innerHTML = interno
+      ? '<span class="pill pill-success"><i class="fas fa-hospital-user"></i> De la clínica</span>' : '';
+  }
+  function abrirRegistroAb(alTerminar) {
+    abContinuar = alTerminar;
+    var f = abForm(), abs = antibioticos();
+    if (state.registroAb) Object.keys(state.registroAb).forEach(function (k) {
+      var el = f.elements[k]; if (!el) return;
+      if (k === 'vale_salida') el.checked = !!state.registroAb[k];
+      else if (k === 'destino_receta') f.querySelectorAll('[name="destino_receta"]').forEach(function (r) { r.checked = r.value === state.registroAb[k]; });
+      else el.value = state.registroAb[k] || '';
+    });
+    // Prellenado: cuenta del consultorio (paciente y médico de la receta interna) o cliente seleccionado
+    var c = state.cuenta;
+    if (c) {
+      abSet('paciente_nombre', c.paciente.nombre.toUpperCase()); abSet('paciente_id', c.paciente.id);
+      if (c.medico) {
+        abSet('medico_nombre', c.medico.nombre); abSet('medico_cedula', c.medico.cedula); abSet('medico_domicilio', c.medico.domicilio);
+        abSet('institucion', c.medico.institucion); abSet('receta_folio', c.medico.receta_folio); abSet('receta_fecha', c.medico.receta_fecha);
+        abSet('receta_clinica_id', c.medico.receta_clinica_id);
+      }
+    } else if (state.cliente.id && !f.elements.paciente_nombre.value) {
+      abSet('paciente_nombre', state.cliente.nombre);
+    }
+    if (!f.elements.receta_fecha.value) f.elements.receta_fecha.value = new Date().toISOString().slice(0, 10);
+    abPacienteTag();
+    // Sustancia en automático desde el inventario (compuesto + producto)
+    var caja = document.getElementById('abProductos');
+    var linea = function (a, x) {
+      x = x || {};
+      var compuesto = (x.compuesto || a.nombre).toUpperCase(), prod = a.nombre.toUpperCase();
+      return '<div class="ab-linea"><b>' + esc(compuesto === prod ? prod : compuesto + '  ' + prod) + '</b>' +
+        '<span>' + a.cant + ' u.' + (x.lote ? ' · Lote ' + esc(x.lote) : '') + (x.tipo_antibiotico ? ' · ' + esc(x.tipo_antibiotico) : '') + '</span></div>';
+    };
+    caja.innerHTML = abs.map(function (a) { return linea(a); }).join('');
+    FC.json(CFG.urls.abProductos + '?ids=' + abs.map(function (a) { return a.id; }).join(',')).then(function (info) {
+      var porId = {}; info.forEach(function (x) { porId[x.id] = x; });
+      caja.innerHTML = abs.map(function (a) { return linea(a, porId[a.id]); }).join('');
+    }).catch(function () {});
+    $('#modalAntibiotico').modal('show');
+  }
+
+  function sugerencias(input, caja, url, pintar, elegir) {
+    var t;
+    input.addEventListener('input', function () {
+      if (input.name === 'paciente_nombre') { abForm().elements.paciente_id.value = ''; abPacienteTag(); }
+      clearTimeout(t);
+      var q = input.value.trim();
+      if (q.length < 2) { caja.innerHTML = ''; return; }
+      t = setTimeout(function () {
+        FC.json(url + '?q=' + encodeURIComponent(q)).then(function (lista) {
+          caja.innerHTML = lista.slice(0, 8).map(function (x, i) { return '<button type="button" data-i="' + i + '">' + pintar(x) + '</button>'; }).join('');
+          caja.querySelectorAll('button').forEach(function (b) { b.addEventListener('mousedown', function (e) { e.preventDefault(); elegir(lista[Number(b.getAttribute('data-i'))]); caja.innerHTML = ''; }); });
+        }).catch(function () {});
+      }, 220);
+    });
+    input.addEventListener('blur', function () { setTimeout(function () { caja.innerHTML = ''; }, 150); });
+  }
+  (function iniciarRegistroAb() {
+    var f = abForm(); if (!f) return;
+    var llenarMedico = function (m) {
+      f.elements.medico_nombre.value = m.nombre || ''; f.elements.medico_cedula.value = m.cedula || '';
+      if (m.domicilio) f.elements.medico_domicilio.value = m.domicilio;
+      if (m.institucion) f.elements.institucion.value = m.institucion;
+    };
+    var pintarMedico = function (m) { return '<b>' + esc(m.nombre) + '</b><small>Céd. ' + esc(m.cedula || '—') + (m.institucion ? ' · ' + esc(m.institucion) : '') + (m.veces ? ' · ' + m.veces + ' receta(s)' : '') + '</small>'; };
+    sugerencias(f.elements.medico_nombre, f.querySelector('[data-sug="medico"]'), CFG.urls.abMedicos, pintarMedico, llenarMedico);
+    sugerencias(f.elements.medico_cedula, f.querySelector('[data-sug="cedula"]'), CFG.urls.abMedicos, pintarMedico, llenarMedico);
+    sugerencias(f.elements.paciente_nombre, f.querySelector('[data-sug="paciente"]'), CFG.urls.abPacientes,
+      function (p) { return '<b>' + esc(p.nombre) + '</b><small>' + (p.interno ? 'Clínica · ' + esc(p.expediente || '') : 'Registrado en ventas anteriores') + '</small>'; },
+      function (p) { f.elements.paciente_nombre.value = (p.nombre || '').toUpperCase(); f.elements.paciente_id.value = p.id || ''; abPacienteTag(); });
+    f.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var datos = {};
+      Array.prototype.forEach.call(f.elements, function (el) {
+        if (!el.name || el.type === 'radio') return;
+        datos[el.name] = el.type === 'checkbox' ? (el.checked ? el.value : '') : el.value.trim();
+      });
+      var recoge = f.querySelector('[name="destino_receta"]:checked');
+      datos.destino_receta = recoge ? recoge.value : 'retenida';
+      if (!datos.paciente_nombre || !datos.medico_nombre || !datos.medico_cedula) { FC.toast('Completa paciente, médico y cédula profesional', 'warning'); return; }
+      state.registroAb = datos;
+      $('#modalAntibiotico').modal('hide');
+      var sig = abContinuar; abContinuar = null;
+      if (sig) setTimeout(sig, 350);
+    });
+    $('#modalAntibiotico').on('shown.bs.modal', function () {
+      var vacio = ['medico_cedula', 'medico_nombre', 'paciente_nombre'].filter(function (n) { return !f.elements[n].value; })[0];
+      (f.elements[vacio || 'paciente_nombre']).focus();
+    });
+  })();
+  function limpiarRegistroAb() {
+    state.registroAb = null;
+    var f = abForm(); if (f) { f.reset(); f.elements.paciente_id.value = ''; f.elements.receta_clinica_id.value = ''; }
   }
 
   function elegirMetodo(id) {
@@ -289,7 +385,8 @@
       total: state.total, metodo_pago_id: m.id, pago: pago, cambio: Math.max(0, pago - state.total),
       cliente_id: state.cliente.id, contiene_antibioticos: antibioticos().length > 0,
       receta_id: state.cuenta && state.cuenta.receta && !state.cuenta.receta.surtida ? state.cuenta.receta.id : null,
-      paciente_id: state.cuenta ? state.cuenta.paciente.id : null
+      paciente_id: state.cuenta ? state.cuenta.paciente.id : null,
+      antibiotico: antibioticos().length ? state.registroAb : null
     } }).then(function (res) {
       Swal.close();
       if (!res.success) { FC.swal({ icon: 'error', title: 'No se pudo registrar', text: res.message }); return; }
@@ -317,7 +414,7 @@
   function nuevaVenta() {
     $('#modalTicket').modal('hide');
     state.carrito = []; state.ventaActual = null;
-    quitarCuenta(true);
+    quitarCuenta(true); limpiarRegistroAb();
     seleccionarCliente(null, 'PÚBLICO GENERAL');
     document.getElementById('ticket-iframe').src = 'about:blank';
     render(); focusScan();
@@ -326,7 +423,7 @@
   function vaciar() {
     if (!state.carrito.length) return;
     FC.confirm('¿Vaciar el carrito?', 'Se quitarán todos los artículos de la venta actual.', { icon: 'warning', confirmButtonText: 'Sí, vaciar' })
-      .then(function (ok) { if (ok) { state.carrito = []; quitarCuenta(true); render(); focusScan(); } });
+      .then(function (ok) { if (ok) { state.carrito = []; quitarCuenta(true); limpiarRegistroAb(); render(); focusScan(); } });
   }
 
   /* ---------------- cuenta de paciente (consultorio) ---------------- */

@@ -1,6 +1,6 @@
 """Registro y consulta de ventas (fuente de verdad del punto de venta)."""
 from ..db import execute, fetch_all, fetch_one, num, transaction
-from . import NegocioError, clinica_caja, folios
+from . import NegocioError, antibioticos, clinica_caja, folios
 from .caja import corte_abierto
 from .productos import es_vendible, estado_sql
 
@@ -14,6 +14,7 @@ def _linea(conn, item):
         raise NegocioError("Hay un artículo con cantidad o identificador inválido.", 422)
     if tipo == "producto":
         p = fetch_one(conn, f"""SELECT id, nombre, stock_actual, precio_publico, precio_costo, antibiotico,
+                                       sustancia_activa, tipo_antibiotico, lote, fecha_caducidad,
                                        {estado_sql()} AS estado_caducidad
                                 FROM productos WHERE id = %s AND status = 1 FOR UPDATE""", (item_id,))
         if not p:
@@ -22,7 +23,9 @@ def _linea(conn, item):
             raise NegocioError(f"'{p['nombre']}' está {p['estado_caducidad'].lower()}. No se puede vender.", 409)
         return {"tipo": tipo, "producto_id": p["id"], "nombre": p["nombre"], "cantidad": cant,
                 "stock": int(p["stock_actual"] or 0), "precio": num(p["precio_publico"]),
-                "costo": num(p["precio_costo"]), "antibiotico": bool(p["antibiotico"])}
+                "costo": num(p["precio_costo"]), "antibiotico": bool(p["antibiotico"]),
+                "compuesto": p["sustancia_activa"] or p["nombre"], "tipo_antibiotico": p["tipo_antibiotico"],
+                "lote": p["lote"], "fecha_caducidad": p["fecha_caducidad"]}
     if tipo == "honorario":
         return clinica_caja.linea_honorario(conn, item_id)
     tabla = TABLAS.get(tipo)
@@ -36,7 +39,7 @@ def _linea(conn, item):
 
 
 def procesar(conn, carrito, metodo_pago_id, usuario_id, pago=None, cliente_id=None, receta_id=None,
-             paciente_id=None):
+             paciente_id=None, antibiotico=None):
     if not carrito:
         raise NegocioError("El carrito está vacío.", 422)
     metodo = fetch_one(conn, "SELECT id, nombre FROM metodos_pago WHERE id = %s AND status = 1", (metodo_pago_id,))
@@ -51,6 +54,7 @@ def procesar(conn, carrito, metodo_pago_id, usuario_id, pago=None, cliente_id=No
             cliente_id = CLIENTE_GENERAL
 
         lineas = [_linea(conn, it) for it in carrito]
+        registro_ab = antibioticos.limpiar_registro(antibiotico) if any(ln.get("antibiotico") for ln in lineas) else None
         cobradas = [ln["consulta_id"] for ln in lineas if ln["tipo"] == "honorario"]
         if len(cobradas) != len(set(cobradas)):
             raise NegocioError("La misma consulta aparece dos veces en el carrito.", 422)
@@ -107,6 +111,8 @@ def procesar(conn, carrito, metodo_pago_id, usuario_id, pago=None, cliente_id=No
                 execute(conn, "UPDATE productos SET stock_actual = stock_actual - %s WHERE id = %s",
                         (ln["cantidad"], ln["producto_id"]))
         clinica_caja.registrar_cobro(conn, venta_id, lineas, receta_id)
+        if registro_ab:
+            antibioticos.guardar(conn, venta_id, usuario_id, registro_ab, lineas)
 
     return {"venta_id": venta_id, "folio": folio, "total": total, "pago": recibido, "cambio": cambio,
             "metodo": metodo["nombre"], "contiene_antibioticos": any(l["antibiotico"] for l in lineas)}

@@ -18,6 +18,7 @@
   function storedTheme() { try { return localStorage.getItem(KEY); } catch (e) { return null; } }
   function applyTheme(t) {
     document.documentElement.setAttribute('data-theme', t);
+    var meta = document.querySelector('meta[name="theme-color"]'); if (meta) meta.setAttribute('content', t === 'dark' ? '#0d1412' : '#0e8a78');
     document.querySelectorAll('[data-theme-icon]').forEach(function (i) {
       i.className = t === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
     });
@@ -98,10 +99,12 @@
   FC.chartColors = function () {
     var dark = FC.theme() === 'dark';
     return {
-      text: dark ? '#a9b8c0' : '#4a5b66',
-      grid: dark ? 'rgba(255,255,255,.06)' : 'rgba(15,40,55,.06)',
-      accent: dark ? '#22c3a8' : '#0e8a78',
-      series: ['#0e8a78', '#2f7bf6', '#8b5cf6', '#e8961c', '#e5484d', '#2a92d4', '#1aa86b', '#d9468f']
+      text: dark ? '#a4b4b0' : '#4a5b66',
+      grid: dark ? 'rgba(170,215,205,.07)' : 'rgba(15,40,55,.06)',
+      accent: dark ? '#2bb8a3' : '#0e8a78',
+      // Oscuro: gama del logo (aquas, verdes y grises) + ámbar/rojo solo para alertas
+      series: dark ? ['#2bb8a3', '#5fc9d6', '#8fa8a2', '#e2a64a', '#ef6b6f', '#1f8a7b', '#c3d1cd', '#7fdcc8']
+                   : ['#0e8a78', '#2f7bf6', '#8b5cf6', '#e8961c', '#e5484d', '#2a92d4', '#1aa86b', '#d9468f']
     };
   };
   FC.chartDefaults = function () {

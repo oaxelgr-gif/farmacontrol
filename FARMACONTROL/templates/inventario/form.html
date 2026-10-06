@@ -31,20 +31,37 @@
                     <input id="cad" type="date" name="fecha_caducidad" class="form-control" value="{{ p.fecha_caducidad or '' }}">
                 </div>
                 <div class="col-md-4 form-group">
-                    <label for="sec">Anaquel (ubicación)</label>
-                    <select id="sec" name="seccion_id" class="form-control" required>
-                        <option value="">Selecciona…</option>
+                    <label for="sec">Anaquel <a href="#" id="nuevoAnaquel" class="float-right" style="font-weight:600;font-size:.8rem"><i class="fas fa-plus"></i> Nuevo</a></label>
+                    <select id="sec" name="seccion_id" class="form-control">
+                        <option value="">Sin anaquel</option>
                         {% for s in secciones %}
                         <option value="{{ s.id }}" {{ 'selected' if p.seccion_id == s.id }}>{{ s.nombre }}</option>
                         {% endfor %}
                     </select>
                 </div>
             </div>
+            <div class="row">
+                <div class="col-md-7 form-group">
+                    <label for="sust">Compuesto / sustancia activa</label>
+                    <input id="sust" type="text" name="sustancia_activa" class="form-control" value="{{ p.sustancia_activa or '' }}" placeholder="Ej. Amoxicilina / ácido clavulánico" maxlength="150">
+                    <div class="form-hint">Se usa en el registro de antibióticos del punto de venta.</div>
+                </div>
+            </div>
             <label class="switch">
-                <input type="checkbox" name="antibiotico" value="1" {{ 'checked' if p.antibiotico }}>
+                <input type="checkbox" name="antibiotico" value="1" id="chkAb" {{ 'checked' if p.antibiotico }}>
                 <span class="track"></span>
                 <span>Requiere receta médica <span class="text-muted">(antibiótico)</span></span>
             </label>
+            <div class="row" id="boxTipoAb" style="margin-top:12px" {{ 'hidden' if not p.antibiotico }}>
+                <div class="col-md-6 form-group">
+                    <label for="tipoAb">Tipo de antibiótico</label>
+                    <select id="tipoAb" name="tipo_antibiotico" class="form-control">
+                        <option value="">Selecciona…</option>
+                        {% for t in tipos_antibiotico %}<option {{ 'selected' if p.tipo_antibiotico == t }}>{{ t }}</option>{% endfor %}
+                        {% if p.tipo_antibiotico and p.tipo_antibiotico not in tipos_antibiotico %}<option selected>{{ p.tipo_antibiotico }}</option>{% endif %}
+                    </select>
+                </div>
+            </div>
         </section>
 
         <section class="card-glass glass">
@@ -107,6 +124,23 @@
         m.className = pct < 0 ? 'text-danger' : 'text-accent';
     }
     c.addEventListener('input', calc); p.addEventListener('input', calc); calc();
+    var chk = document.getElementById('chkAb'), box = document.getElementById('boxTipoAb');
+    chk.addEventListener('change', function () { box.hidden = !chk.checked; });
+    document.getElementById('nuevoAnaquel').addEventListener('click', function (e) {
+        e.preventDefault();
+        FC.swal({ title: 'Nuevo anaquel', input: 'text', inputPlaceholder: 'Nombre del anaquel', showCancelButton: true, confirmButtonText: 'Crear',
+            inputValidator: function (v) { if (!v || !v.trim()) return 'Escribe un nombre'; } }).then(function (r) {
+            if (!r.isConfirmed) return;
+            fetch("{{ url_for('inventario.anaquel_crear') }}", { method: 'POST', credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'fetch' }, body: JSON.stringify({ nombre: r.value }) })
+                .then(function (x) { return x.json(); }).then(function (res) {
+                    FC.toast(res.message, res.success ? 'success' : 'danger');
+                    if (!res.success) return;
+                    var sel = document.getElementById('sec'), op = new Option(res.data.nombre, res.data.id, true, true);
+                    sel.add(op); sel.value = res.data.id;
+                });
+        });
+    });
 })();
 </script>
 {% endblock %}

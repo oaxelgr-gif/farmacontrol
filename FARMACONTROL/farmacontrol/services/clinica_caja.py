@@ -9,6 +9,8 @@ Enlace entre el módulo clínico y la caja.
 """
 import re
 
+from flask import current_app
+
 from ..db import execute, fetch_all, fetch_one, to_float
 from . import caducidad
 
@@ -56,7 +58,7 @@ def cuenta(consulta_id=None, receta_id=None):
     """
     consulta = receta = None
     if receta_id:
-        receta = fetch_one("""SELECT id, folio, paciente_id, consulta_id, venta_id, surtida_at, fecha
+        receta = fetch_one("""SELECT id, folio, paciente_id, consulta_id, medico_id, venta_id, surtida_at, fecha
                               FROM recetas WHERE id = %s AND status = 1""", (receta_id,))
         if not receta:
             raise CuentaError("Receta no encontrada.")
@@ -68,7 +70,7 @@ def cuenta(consulta_id=None, receta_id=None):
         if not consulta:
             raise CuentaError("Consulta no encontrada.")
         if not receta:
-            receta = fetch_one("""SELECT id, folio, paciente_id, consulta_id, venta_id, surtida_at, fecha
+            receta = fetch_one("""SELECT id, folio, paciente_id, consulta_id, medico_id, venta_id, surtida_at, fecha
                                   FROM recetas WHERE consulta_id = %s AND status = 1 ORDER BY id LIMIT 1""",
                                (consulta_id,))
     if not consulta and not receta:
@@ -123,7 +125,21 @@ def cuenta(consulta_id=None, receta_id=None):
         "consulta": {"id": consulta["id"], "folio": consulta["folio"], "pagada": bool(consulta["venta_id"])} if consulta else None,
         "receta": {"id": receta["id"], "folio": receta["folio"], "surtida": bool(receta["venta_id"])} if receta else None,
         "items": items, "faltantes": faltantes, "avisos": avisos, "alergias": alergias,
+        "medico": _medico_receta(receta),
     }
+
+
+def _medico_receta(receta):
+    """Datos del médico del consultorio para prellenar el registro de antibióticos."""
+    if not receta:
+        return None
+    m = fetch_one("""SELECT u.nombre AS usuario, pm.nombre_mostrar, pm.cedula_profesional, pm.direccion, pm.institucion
+                     FROM usuarios u LEFT JOIN perfil_medico pm ON pm.usuario_id = u.id WHERE u.id = %s""",
+                  (receta["medico_id"],)) or {}
+    return {"nombre": m.get("nombre_mostrar") or m.get("usuario"), "cedula": m.get("cedula_profesional"),
+            "domicilio": m.get("direccion"), "institucion": m.get("institucion_receta") or f"Consultorio {current_app.config.get('NOMBRE_NEGOCIO', '')}".strip(),
+            "receta_folio": f"{receta['id']:06d}", "receta_clinica_id": receta["id"],
+            "receta_fecha": receta["fecha"].date().isoformat() if hasattr(receta["fecha"], "date") else None}
 
 
 # ------------------------------------------------------------- dentro de la venta

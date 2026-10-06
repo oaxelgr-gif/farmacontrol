@@ -29,22 +29,23 @@
         <div style="font-size:.86rem">Estos productos están <b>bloqueados en el punto de venta</b>. Retíralos del anaquel o gestiona su devolución con el proveedor.</div>
     </div>
     <div class="table-wrap">
-        <table class="table" id="tablaCad">
-            <thead><tr><th>Producto</th><th>Lote</th><th>Sección</th><th>Caducidad</th><th class="num">Días</th><th class="num">Existencia</th><th class="num">Valor</th></tr></thead>
+        <table class="table" id="tablaCad" data-tabla="Caducidades · productos vencidos y por vencer" data-subtitulo="Vencen antes del {{ limite|fecha }}">
+            <thead><tr><th>Producto</th><th>Lote</th><th data-filtro>Anaquel</th><th data-filtro>Estado</th><th>Caducidad</th><th class="num">Días</th><th class="num">Existencia</th><th class="num">Valor</th></tr></thead>
             <tbody>
             {% for p in productos %}
                 {% set d = p.dias_restantes or 0 %}
-                <tr data-estado="{{ 'vencido' if d < 0 else 'proximo' }}">
-                    <td><div class="cell-title">{{ p.nombre }}{% if p.antibiotico %} <span class="pill pill-purple">Antibiótico</span>{% endif %}</div><div class="cell-sub mono">{{ p.codigo_barras or '' }}</div></td>
+                <tr data-estado="{{ 'vencido' if d < 0 else 'proximo' }}" class="{{ 'alerta' if d < 0 }}">
+                    <td data-export="{{ p.nombre }}{{ ' (antibiótico)' if p.antibiotico }}"><div class="cell-title">{{ p.nombre }}{% if p.antibiotico %} <span class="pill pill-purple">Antibiótico</span>{% endif %}</div><div class="cell-sub mono">{{ p.codigo_barras or '' }}</div></td>
                     <td class="mono">{{ p.lote or '—' }}</td>
-                    <td class="text-2">{{ p.seccion or 'Sin sección' }}</td>
-                    <td>{{ ui.caducidad_pill(p.fecha_caducidad, hoy, dias_alerta) }}</td>
+                    <td class="text-2">{{ p.seccion or 'Sin anaquel' }}</td>
+                    <td>{{ 'Vencido' if d < 0 else 'Por vencer' }}</td>
+                    <td data-export="{{ p.fecha_caducidad|fecha }}">{{ ui.caducidad_pill(p.fecha_caducidad, hoy, dias_alerta) }}</td>
                     <td class="num fw-800 {{ 'text-danger' if d < 0 else 'text-warning' }}">{{ d }}</td>
                     <td class="num">{{ p.stock_actual }}</td>
                     <td class="num fw-700">{{ p.valor_inventario|money }}</td>
                 </tr>
             {% else %}
-                {{ ui.empty_row(7, 'Sin productos en riesgo', 'Ningún producto con existencia vence en los próximos días.', 'fa-circle-check') }}
+                {{ ui.empty_row(8, 'Sin productos en riesgo', 'Ningún producto con existencia vence en los próximos días.', 'fa-circle-check') }}
             {% endfor %}
             </tbody>
         </table>

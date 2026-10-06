@@ -162,6 +162,30 @@ Con Docker, los scripts nuevos solo corren en un volumen nuevo. Si ya tenías la
 `docker compose exec -T db mysql -uroot -p"$MYSQL_ROOT_PASSWORD" medicalife < BD/02_modulo_clinico.sql`
 (o `make reset-db`, que borra los datos). Los archivos adjuntos se guardan en `instance/uploads` (volumen `farmacontrol_uploads`).
 
+## Mejoras de inventario, antibióticos y receta
+
+```bash
+docker compose exec -T db sh -c 'mysql -uroot -p"$MYSQL_ROOT_PASSWORD" medicalife' < BD/05_mejoras_inventario_antibioticos.sql
+```
+
+- **Anaqueles**: botón *Anaqueles* en Inventario → crear, renombrar, describir y eliminar (al eliminar, los productos
+  se mueven a otro anaquel o quedan *Sin anaquel*). En el formulario del producto: *+ Nuevo* anaquel.
+- **Filtros de caducidad**: vence en 1, 2 y 3 meses, y vencidos (con contador).
+- **Antibióticos**: cada producto tiene *compuesto / sustancia activa* y *tipo de antibiótico*. Al cobrar un antibiótico
+  el POS pide la receta: paciente (de la clínica o externo), médico, cédula, domicilio, institución, folio y fecha de
+  receta, vale de salida y si la receta se retiene o se sella. Sin esos datos la venta no se registra.
+- **Reporte de antibióticos** sin importes ni utilidad: compuesto, tipo, lote, paciente, médico, cédula, receta y quién lo gestionó; exporta CSV.
+- **Diagnósticos**: se guardan solos en los padecimientos del paciente (sin duplicar) y en un catálogo de frecuentes; la
+  consulta se guarda como borrador mientras se captura.
+- **Receta**: formato MEDICALIFE en hoja carta (original + copia). Logos, WhatsApp y datos en *Clínica → Perfil médico*.
+  Para continuar la numeración de tus recetas: `ALTER TABLE recetas AUTO_INCREMENT = 1542;`
+
+### Impresora de tickets que imprime "código" (PostScript)
+
+Si el ticket sale como texto `%!PS-Adobe-3.0 …`, la impresora térmica se instaló en macOS con un controlador PostScript
+genérico. Elimínala en *Ajustes del Sistema → Impresoras y escáneres* y agrégala de nuevo con el controlador del
+fabricante (modelo exacto, p. ej. «POS-80», «Epson TM-T20», «Xprinter XP-80»), papel 80 mm × rollo y márgenes 0.
+
 ## Respaldo
 
 La versión anterior quedó en `_respaldo_v1/` (app.py, models.py, plantillas y CSS originales).

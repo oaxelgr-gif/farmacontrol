@@ -23,11 +23,19 @@
         document.getElementById('tp-iframe').src = TICKET_URL.replace(/0$/, id) + '?reimpresion=1';
         $('#modalTicketPreview').modal('show');
     }
+    // Reimprime directo, sin abrir la vista previa
+    function reimprimirTicket(id) {
+        var f = document.getElementById('tp-oculto');
+        if (!f) { f = document.createElement('iframe'); f.id = 'tp-oculto'; f.title = 'Ticket'; f.style.cssText = 'position:fixed;width:0;height:0;border:0;visibility:hidden'; document.body.appendChild(f); }
+        f.onload = function () { try { f.contentWindow.focus(); f.contentWindow.print(); } catch (e) { verTicket(id); } f.onload = null; };
+        f.src = TICKET_URL.replace(/0$/, id) + '?reimpresion=1';
+        if (window.FC) FC.toast('Enviando ticket a la impresora…', 'info', 2500);
+    }
     function imprimirTicketPreview() {
         var f = document.getElementById('tp-iframe');
         try { f.contentWindow.focus(); f.contentWindow.print(); } catch (e) { FC.toast('No se pudo imprimir', 'warning'); }
     }
     document.addEventListener('keydown', function (e) {
-        if (e.key === 'F12' && typeof VENTA_ACTUAL !== 'undefined') { e.preventDefault(); verTicket(VENTA_ACTUAL.id, VENTA_ACTUAL.folio); }
+        if (e.key === 'F12' && typeof VENTA_ACTUAL !== 'undefined') { e.preventDefault(); reimprimirTicket(VENTA_ACTUAL.id); }
     });
 </script>

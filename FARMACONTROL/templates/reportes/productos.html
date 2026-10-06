@@ -40,8 +40,8 @@
 <section class="card-glass glass reveal reveal-4">
     <div class="card-head"><h2 class="card-title"><span class="ico"><i class="fas fa-table-list"></i></span> Ranking de productos</h2></div>
     <div class="table-wrap">
-        <table class="table">
-            <thead><tr><th>#</th><th>Producto</th><th>Sección</th><th class="num">Unidades</th><th class="num">Ventas</th><th class="num">Precio prom.</th><th class="num">Importe</th></tr></thead>
+        <table class="table" data-tabla="Productos más vendidos" data-subtitulo="Del {{ fecha_inicio|fecha }} al {{ fecha_fin|fecha }}">
+            <thead><tr><th>#</th><th>Producto</th><th data-filtro>Anaquel</th><th class="num">Unidades</th><th class="num">Ventas</th><th class="num">Precio prom.</th><th class="num">Importe</th></tr></thead>
             <tbody>
             {% for p in top_productos %}
                 <tr>

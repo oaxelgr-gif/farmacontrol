@@ -95,6 +95,90 @@
     });
   };
 
+  /* ---------------- Diagnósticos frecuentes (catálogo propio que se aprende solo) ---------------- */
+  CL.diagnosticosFrecuentes = function (url, repDiag, box) {
+    return Promise.all([CL.cargarCie10(), fetch(url, { credentials: 'same-origin' }).then(function (r) { return r.json(); }).catch(function () { return []; })])
+      .then(function (res) {
+        var propios = res[1] || [];
+        if (!propios.length) return;
+        // Se agregan al inicio del catálogo para autocompletar y para ligar descripción ↔ código
+        var vistos = {};
+        propios.forEach(function (x) { vistos[x.d] = 1; });
+        cie10 = propios.filter(function (x) { return x.c; }).concat((cie10 || []).filter(function (x) { return !vistos[x.d]; }));
+        var dl = document.getElementById('cie10-list');
+        if (dl) dl.insertAdjacentHTML('afterbegin', propios.map(function (x) { return '<option value="' + esc(x.d) + '">' + esc(x.c || 'Frecuente') + ' · usado ' + x.usos + ' vez/veces</option>'; }).join(''));
+        if (!box || !repDiag) return;
+        propios.slice(0, 8).forEach(function (x) {
+          var b = document.createElement('button');
+          b.type = 'button'; b.className = 'chip-dx'; b.title = 'Agregar este diagnóstico';
+          b.innerHTML = (x.c ? '<span class="mono">' + esc(x.c) + '</span> ' : '') + esc(x.d);
+          b.addEventListener('click', function () {
+            var filas = repDiag.lista.children, ultima = filas[filas.length - 1];
+            var campo = ultima && ultima.querySelector('[data-field="descripcion"]');
+            if (campo && !campo.value.trim()) {
+              campo.value = x.d; var c = ultima.querySelector('[data-field="cie10"]'); if (c) c.value = x.c || '';
+              campo.dispatchEvent(new Event('input', { bubbles: true }));
+            } else repDiag.agregar({ descripcion: x.d, cie10: x.c || '', tipo: filas.length ? 'secundario' : 'principal', agregar: true });
+          });
+          box.appendChild(b);
+        });
+        box.hidden = false;
+      });
+  };
+
+  /* ---------------- Borrador automático de formularios ---------------- */
+  CL.borrador = function (form, clave, repetidores) {
+    if (!form) return false;
+    var almacen; try { almacen = window.localStorage; almacen.getItem('x'); } catch (e) { return false; }
+    repetidores = repetidores || {};
+    var campos = function () { return Array.prototype.filter.call(form.elements, function (el) { return el.name && !/_json$/.test(el.name) && el.type !== 'file' && el.type !== 'submit' && el.type !== 'button'; }); };
+    var guardar = function () {
+      var datos = { t: Date.now(), campos: {}, reps: {} };
+      campos().forEach(function (el) {
+        if (el.type === 'checkbox' || el.type === 'radio') { if (el.checked) datos.campos[el.name] = el.value; }
+        else datos.campos[el.name] = el.value;
+      });
+      Object.keys(repetidores).forEach(function (k) { if (repetidores[k]) datos.reps[k] = repetidores[k].serializar(); });
+      try { almacen.setItem(clave, JSON.stringify(datos)); } catch (e) {}
+      var aviso = document.getElementById('borrador-estado');
+      if (aviso) aviso.textContent = 'Borrador guardado ' + new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+    };
+    var t, programar = function () { clearTimeout(t); t = setTimeout(guardar, 500); };
+
+    var recuperado = false;
+    try {
+      var previo = JSON.parse(almacen.getItem(clave) || 'null');
+      if (previo && Date.now() - previo.t < 7 * 864e5) {
+        campos().forEach(function (el) {
+          if (!(el.name in previo.campos)) { if (el.type === 'checkbox') el.checked = false; return; }
+          if (el.type === 'checkbox' || el.type === 'radio') el.checked = previo.campos[el.name] === el.value;
+          else el.value = previo.campos[el.name];
+        });
+        Object.keys(repetidores).forEach(function (k) {
+          var r = repetidores[k], filas = (previo.reps || {})[k] || [];
+          if (!r) return;
+          r.lista.innerHTML = '';
+          filas.forEach(function (f) { r.agregar(f); });
+        });
+        recuperado = true;
+        var hora = new Date(previo.t).toLocaleString('es-MX', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+        var banner = document.createElement('div');
+        banner.className = 'alert alert-info borrador-banner';
+        banner.innerHTML = '<i class="fas fa-clock-rotate-left"></i><div class="grow">Se recuperó la captura sin guardar del <b>' + hora + '</b>.</div><button type="button" class="btn btn-ghost btn-sm">Descartar borrador</button>';
+        banner.querySelector('button').addEventListener('click', function () { try { almacen.removeItem(clave); } catch (e) {} location.reload(); });
+        form.parentNode.insertBefore(banner, form);
+        form.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    } catch (e) { recuperado = false; }
+
+    form.addEventListener('input', programar);
+    form.addEventListener('change', programar);
+    Object.keys(repetidores).forEach(function (k) {
+      if (repetidores[k] && window.MutationObserver) new MutationObserver(programar).observe(repetidores[k].lista, { childList: true });
+    });
+    return recuperado;
+  };
+
   /* ---------------- Estudios frecuentes ---------------- */
   CL.cargarEstudios = function () {
     return fetch(STATIC + 'data/estudios.json').then(function (r) { return r.json(); }).then(function (d) {

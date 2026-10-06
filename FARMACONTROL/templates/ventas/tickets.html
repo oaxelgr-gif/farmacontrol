@@ -38,20 +38,21 @@
     </form>
 
     <div class="table-wrap">
-        <table class="table">
-            <thead><tr><th>Folio</th><th>Fecha</th>{% if es_admin %}<th>Vendedor</th>{% endif %}<th>Cliente</th><th>Método</th><th class="num">Total</th><th class="num">Acciones</th></tr></thead>
+        <table class="table" data-tabla="Tickets de venta">
+            <thead><tr><th>Folio</th><th>Fecha</th>{% if es_admin %}<th data-filtro>Vendedor</th>{% endif %}<th>Cliente</th><th data-filtro>Método</th><th class="num">Total</th><th class="num" data-no-export>Acciones</th></tr></thead>
             <tbody>
             {% for v in ventas %}
                 <tr>
                     <td class="mono fw-700">{{ v.folio }}</td>
-                    <td><div>{{ v.fecha|fecha }}</div><div class="cell-sub">{{ v.fecha|hora }}</div></td>
-                    {% if es_admin %}<td>{{ ui.user_cell(v.vendedor) }}</td>{% endif %}
+                    <td data-export="{{ v.fecha|fecha_hora }}"><div>{{ v.fecha|fecha }}</div><div class="cell-sub">{{ v.fecha|hora }}</div></td>
+                    {% if es_admin %}<td data-export="{{ v.vendedor }}">{{ ui.user_cell(v.vendedor) }}</td>{% endif %}
                     <td class="text-2">{{ v.cliente or 'Público General' }}</td>
-                    <td>{{ ui.metodo_pill(v.metodo_pago) }}</td>
+                    <td data-export="{{ v.metodo_pago }}">{{ ui.metodo_pill(v.metodo_pago) }}</td>
                     <td class="num fw-800">{{ v.total|money }}</td>
                     <td class="num" style="white-space:nowrap">
                         <a class="btn btn-glass btn-icon" href="{{ url_for('ventas.ver_detalle_venta', venta_id=v.id) }}" title="Ver detalle"><i class="fas fa-eye"></i></a>
-                        <button class="btn btn-glass btn-icon" title="Reimprimir" onclick="verTicket({{ v.id }}, '{{ v.folio }}')"><i class="fas fa-print"></i></button>
+                        <button class="btn btn-glass btn-icon" title="Ver ticket" onclick="verTicket({{ v.id }}, '{{ v.folio }}')"><i class="fas fa-receipt"></i></button>
+                        <button class="btn btn-glass btn-icon" title="Reimprimir" onclick="reimprimirTicket({{ v.id }})"><i class="fas fa-print"></i></button>
                     </td>
                 </tr>
             {% else %}

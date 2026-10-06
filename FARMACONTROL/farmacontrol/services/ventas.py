@@ -12,7 +12,7 @@ Mejoras respecto a la versión anterior:
 
 from ..db import execute, fetch_all, fetch_one, to_float, transaction
 from ..utils.helpers import to_int, to_num
-from . import caducidad, clinica_caja, folios
+from . import antibioticos, caducidad, clinica_caja, folios
 from .cortes import corte_abierto
 
 TIPOS_VALIDOS = {"producto", "servicio", "consulta", "honorario"}
@@ -46,7 +46,8 @@ def _cargar_linea(cur, item):
 
     if tipo == "producto":
         prod = fetch_one(
-            f"""SELECT id, nombre, stock_actual, precio_publico, precio_costo,
+            f"""SELECT id, nombre, stock_actual, precio_publico, precio_costo, antibiotico,
+                       sustancia_activa, tipo_antibiotico, lote, fecha_caducidad,
                        {caducidad.estado_sql()} AS estado_caducidad
                 FROM productos WHERE id = %s AND status = 1 FOR UPDATE""",
             (item_id,),
@@ -65,6 +66,11 @@ def _cargar_linea(cur, item):
             "stock": int(prod["stock_actual"] or 0),
             "precio": to_float(prod["precio_publico"]),
             "costo": to_float(prod["precio_costo"]),
+            "antibiotico": bool(prod["antibiotico"]),
+            "compuesto": prod["sustancia_activa"] or prod["nombre"],
+            "tipo_antibiotico": prod["tipo_antibiotico"],
+            "lote": prod["lote"],
+            "fecha_caducidad": prod["fecha_caducidad"],
         }
 
     if tipo == "honorario":  # consulta médica del módulo clínico
@@ -113,6 +119,12 @@ def procesar_venta(payload, usuario_id):
             cliente_id = CLIENTE_GENERAL_ID
 
         lineas = [_cargar_linea(cur, item) for item in carrito]
+        registro_ab = None
+        if any(ln.get("antibiotico") for ln in lineas):
+            try:
+                registro_ab = antibioticos.limpiar_registro(payload.get("antibiotico"))
+            except antibioticos.RegistroError as exc:
+                raise VentaError(str(exc)) from exc
         cobradas = [ln["consulta_id"] for ln in lineas if ln["tipo"] == "honorario"]
         if len(cobradas) != len(set(cobradas)):
             raise VentaError("La misma consulta aparece dos veces en el carrito.")
@@ -190,6 +202,8 @@ def procesar_venta(payload, usuario_id):
                     cursor=cur,
                 )
         clinica_caja.registrar_cobro(cur, venta_id, lineas, receta_id)
+        if registro_ab:
+            antibioticos.guardar(cur, venta_id, usuario_id, registro_ab, lineas)
 
     return {
         "venta_id": venta_id,

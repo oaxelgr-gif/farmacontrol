@@ -1,14 +1,14 @@
 """Módulo de reportes y analítica."""
 from datetime import timedelta
 
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, Response, flash, redirect, render_template, request, url_for
 from flask_login import login_required
 
 from ...db import fetch_all, fetch_one, fetch_value, to_float
 from ...services import caducidad
 from ...services.catalogos import farmaceuticos, metodos_pago
 from ...utils.decorators import admin_required
-from ...utils.helpers import hoy, rango_fechas, to_int
+from ...utils.helpers import hoy, parse_fecha, rango_fechas, to_int
 
 bp = Blueprint("reportes", __name__)
 
@@ -110,53 +110,45 @@ def financiero():
 @login_required
 @admin_required
 def antibioticos():
+    """Control de antibióticos: solo datos sanitarios (sin importes ni utilidad)."""
+    from ...services import antibioticos as svc_ab
+    from ..inventario.routes import TIPOS_ANTIBIOTICO
+
     fecha_inicio, fecha_fin = rango_fechas(request.args, "fecha_inicio", "fecha_fin")
     usuario_id = request.args.get("usuario_id", "")
     producto_id = request.args.get("producto_id", "")
+    tipo = request.args.get("tipo", "")
+    q = (request.args.get("q") or "").strip()
+    filas = svc_ab.bitacora(parse_fecha(fecha_inicio), parse_fecha(fecha_fin), to_int(usuario_id, 0) or None,
+                            to_int(producto_id, 0) or None, tipo or None, q)
 
-    where = " WHERE p.antibiotico = 1 AND v.status = 1 AND DATE(v.fecha) BETWEEN %s AND %s"
-    params = [fecha_inicio, fecha_fin]
-    if usuario_id:
-        where += " AND v.usuario_id = %s"
-        params.append(to_int(usuario_id))
-    if producto_id:
-        where += " AND p.id = %s"
-        params.append(to_int(producto_id))
-
-    base = """FROM detalle_ventas dv
-              JOIN productos p ON dv.producto_id = p.id
-              JOIN ventas v ON dv.venta_id = v.id
-              JOIN usuarios u ON v.usuario_id = u.id
-              LEFT JOIN clientes c ON v.cliente_id = c.id"""
-
-    registros = fetch_all(
-        f"""SELECT v.id AS venta_id, v.fecha, v.folio, u.nombre AS vendedor, p.nombre AS producto,
-                   p.lote, dv.cantidad, dv.precio_unitario, dv.precio_costo_momento, dv.subtotal,
-                   (dv.subtotal - (dv.cantidad * dv.precio_costo_momento)) AS utilidad,
-                   c.nombre AS cliente
-            {base} {where} ORDER BY v.fecha DESC""", params)
-    estadisticas = fetch_one(
-        f"""SELECT COUNT(DISTINCT v.id) AS total_ventas, IFNULL(SUM(dv.cantidad), 0) AS total_unidades,
-                   IFNULL(SUM(dv.subtotal), 0) AS total_venta,
-                   IFNULL(SUM(dv.subtotal - (dv.cantidad * dv.precio_costo_momento)), 0) AS total_utilidad
-            {base} {where}""", params) or {}
-    top_productos = fetch_all(
-        f"""SELECT p.nombre, SUM(dv.cantidad) AS cantidad_vendida, SUM(dv.subtotal) AS total_venta
-            {base} {where} GROUP BY p.id, p.nombre ORDER BY cantidad_vendida DESC LIMIT 10""", params)
-    por_vendedor = fetch_all(
-        f"""SELECT u.nombre AS vendedor, COUNT(DISTINCT v.id) AS ventas_realizadas,
-                   SUM(dv.cantidad) AS unidades_vendidas, SUM(dv.subtotal) AS total_venta
-            {base} {where} GROUP BY u.id, u.nombre ORDER BY unidades_vendidas DESC""", params)
+    if request.args.get("formato") == "csv":
+        import csv
+        import io
+        out = io.StringIO()
+        out.write("\ufeff")
+        w = csv.writer(out)
+        w.writerow(["Fecha", "Folio venta", "Compuesto", "Producto", "Tipo de antibiótico", "Lote", "Caducidad",
+                    "Cantidad", "Paciente", "Expediente", "Médico", "Cédula", "Domicilio médico", "Institución",
+                    "Folio receta", "Fecha receta", "Vale de salida", "Se recoge receta", "Gestionó"])
+        for r in filas:
+            w.writerow([r["fecha"], r["folio"], r["compuesto"], r["producto"], r["tipo_antibiotico"] or "", r["lote"] or "",
+                        r["caducidad"] or "", r["cantidad"], r["paciente_nombre"] or "SIN REGISTRO", r["expediente"] or "",
+                        r["medico_nombre"] or "", r["medico_cedula"] or "", r["medico_domicilio"] or "",
+                        r["institucion"] or "", r["receta_folio"] or "", r["receta_fecha"] or "", ("SÍ" if r["vale_salida"] else "NO") if r["registro_id"] else "",
+                        ("SÍ" if r["destino_receta"] == "retenida" else "NO") if r["registro_id"] else "", r["gestiono"]])
+        return Response(out.getvalue(), mimetype="text/csv; charset=utf-8", headers={
+            "Content-Disposition": f"attachment; filename=control_antibioticos_{fecha_inicio}_{fecha_fin}.csv"})
 
     return render_template(
         "reportes/antibioticos.html",
-        registros=registros,
-        usuarios=farmaceuticos(),
+        registros=filas, r=svc_ab.resumen(filas),
+        usuarios=farmaceuticos() + [u for u in fetch_all("SELECT id, nombre FROM usuarios WHERE status = 1 AND rol = 1")],
         antibioticos=fetch_all(
             "SELECT id, nombre FROM productos WHERE antibiotico = 1 AND status = 1 ORDER BY nombre"),
+        tipos=TIPOS_ANTIBIOTICO,
         fecha_inicio=fecha_inicio, fecha_fin=fecha_fin,
-        usuario_id=usuario_id, producto_id=producto_id,
-        estadisticas=estadisticas, top_productos=top_productos, por_vendedor=por_vendedor,
+        usuario_id=usuario_id, producto_id=producto_id, tipo=tipo, q=q,
     )
 
 

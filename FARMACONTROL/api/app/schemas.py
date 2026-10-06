@@ -121,6 +121,9 @@ class VentaCrear(BaseModel):
     cliente_id: Optional[int] = None
     receta_id: Optional[int] = Field(default=None, description="Receta que se surte con esta venta")
     paciente_id: Optional[int] = Field(default=None, description="Paciente: la venta queda a su nombre")
+    antibiotico: Optional[dict] = Field(default=None, description=(
+        "Obligatorio si el carrito tiene antibióticos: paciente_nombre, paciente_id, medico_nombre, medico_cedula, "
+        "medico_domicilio, institucion, receta_folio, receta_fecha, vale_salida, destino_receta (retenida/sellada)"))
 
 
 class VentaRegistrada(BaseModel):

@@ -1,5 +1,6 @@
 /* Formato de ticket térmico (80 mm) */
-@page { size: 80mm auto; margin: 0; }
+/* El tamaño de papel lo define el controlador de la impresora térmica (80 mm × rollo). */
+@page { margin: 0; }
 * { box-sizing: border-box; }
 body {
   margin: 0; padding: 16px; background: #eef2f4; color: #000;

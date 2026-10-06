@@ -95,6 +95,8 @@
             </div>
             <div data-repeater="diagnosticos"></div>
             <p class="text-muted" data-empty-for="diagnosticos" style="margin:0">Agrega al menos un diagnóstico. Puedes buscar en el catálogo CIE-10.</p>
+            <div class="dx-frecuentes" id="dxFrecuentes" hidden><span class="text-muted"><i class="fas fa-bolt"></i> Tus diagnósticos frecuentes:</span></div>
+            <p class="form-hint" style="margin:8px 0 0"><i class="fas fa-floppy-disk"></i> Los diagnósticos se guardan solos en el expediente del paciente y en tu catálogo para la próxima vez.</p>
         </section>
 
         {# 5. Plan #}
@@ -168,6 +170,7 @@
             {% if ult and ult.diagnostico %}<div style="margin:12px 0 4px" class="fw-700 text-muted">ÚLTIMO DIAGNÓSTICO</div><div class="cell-sub">{{ ult.diagnostico }}</div>{% endif %}
             <hr>
             <button type="submit" class="btn btn-primary btn-lg btn-block"><i class="fas fa-floppy-disk"></i> Guardar consulta</button>
+            <div class="form-hint text-center" id="borrador-estado" style="margin-top:6px"><i class="fas fa-cloud"></i> La captura se guarda como borrador automáticamente</div>
             <button type="submit" name="imprimir" value="1" class="btn btn-glass btn-block" style="margin-top:8px"><i class="fas fa-print"></i> Guardar e imprimir receta</button>
             <button type="submit" name="cobrar" value="1" class="btn btn-glass btn-block" style="margin-top:8px" title="Guarda y abre el punto de venta con los honorarios y la receta"><i class="fas fa-cash-register"></i> Guardar y cobrar en caja</button>
             <a href="{{ url_for('clinica.expediente', paciente_id=p.id) }}" class="btn btn-ghost btn-block" style="margin-top:6px" target="_blank"><i class="fas fa-folder-open"></i> Ver expediente</a>
@@ -182,7 +185,7 @@
         <div class="form-group"><label>Diagnóstico</label><input data-field="descripcion" class="form-control" list="cie10-list" placeholder="Escribe o elige del catálogo CIE-10"></div>
         <div class="form-group"><label>CIE-10</label><input data-field="cie10" class="form-control mono" list="cie10-codes" placeholder="J03.9"></div>
         <div class="form-group"><label>Tipo</label><select data-field="tipo" class="form-control"><option value="principal">Principal</option><option value="secundario">Secundario</option><option value="presuntivo">Presuntivo</option></select></div>
-        <label class="chip-check" title="Se agregará a la lista de padecimientos del paciente"><input type="checkbox" data-field="agregar"> Al expediente</label>
+        <label class="chip-check" title="Se guarda automáticamente en los padecimientos del paciente (sin duplicar). Desmarca si no quieres guardarlo."><input type="checkbox" data-field="agregar" checked> Guardar en expediente</label>
         <button type="button" class="btn btn-ghost btn-icon danger rm" title="Quitar"><i class="fas fa-xmark"></i></button>
     </div>
 </template>
@@ -226,9 +229,13 @@ document.addEventListener('DOMContentLoaded', function () {
     CL.vitales();
     CL.cargarCie10(); CL.cargarEstudios();
     var diag = CL.repeater('diagnosticos', { alAgregar: CL.enlazarCie10 });
-    CL.repeater('medicamentos', { alAgregar: function (f) { CL.enlazarMedicamento(f, "{{ url_for('clinica.api_medicamentos') }}"); } });
-    CL.repeater('estudios');
-    diag.agregar({ tipo: 'principal' });
+    var meds = CL.repeater('medicamentos', { alAgregar: function (f) { CL.enlazarMedicamento(f, "{{ url_for('clinica.api_medicamentos') }}"); } });
+    var ests = CL.repeater('estudios');
+    CL.diagnosticosFrecuentes("{{ url_for('clinica.api_diagnosticos') }}", diag, document.getElementById('dxFrecuentes'));
+    // Borrador automático: si se cierra la página, la captura se recupera al volver
+    var recuperado = CL.borrador(document.getElementById('formConsulta'), 'fc-consulta-{{ paciente.id }}',
+                                 { diagnosticos: diag, medicamentos: meds, estudios: ests });
+    if (!recuperado) diag.agregar({ tipo: 'principal' });
     document.getElementById('selConcepto').addEventListener('change', function () { if (this.value) document.getElementById('costo').value = this.value; });
     document.querySelectorAll('[data-dias]').forEach(function (b) {
         b.addEventListener('click', function () {

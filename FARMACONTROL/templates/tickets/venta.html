@@ -61,6 +61,13 @@
         </div>
         {% if detalles|selectattr('antibiotico')|list %}
         <div class="center small bold" style="margin-top:2mm">Venta de antibiótico con receta médica.</div>
+        {% if registro_ab %}
+        <div class="small" style="margin-top:1.5mm">
+            Paciente: {{ registro_ab.paciente_nombre|upper }}<br>
+            Médico: {{ registro_ab.medico_nombre }}<br>
+            Céd. Prof.: {{ registro_ab.medico_cedula }}{% if registro_ab.vale_salida %} · Con vale de salida{% endif %}
+        </div>
+        {% endif %}
         {% endif %}
 
         <div class="center bold" style="margin-top:4mm">¡GRACIAS POR SU COMPRA!</div>

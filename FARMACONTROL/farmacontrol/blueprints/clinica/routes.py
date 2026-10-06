@@ -7,7 +7,7 @@ import uuid
 from datetime import date, datetime, timedelta
 
 from flask import (Blueprint, Response, abort, current_app, flash, jsonify, redirect, render_template, request,
-                   send_from_directory, url_for)
+                   send_from_directory, session, url_for)
 from flask_login import current_user, login_required
 from werkzeug.utils import secure_filename
 
@@ -216,6 +216,7 @@ def consulta_nueva():
                     _json_lista("medicamentos_json"), _json_lista("estudios_json"),
                     request.form.get("indicaciones_receta"))
                 flash("Consulta guardada en el expediente." + (" Receta generada." if receta_id else ""), "success")
+                session["borrar_borrador"] = f"fc-consulta-{paciente_id}"
                 destino = url_for("clinica.consulta_detalle", consulta_id=consulta_id)
                 if request.form.get("cobrar") == "1":
                     return redirect(url_for("ventas.punto_venta", consulta=consulta_id))
@@ -287,7 +288,7 @@ def receta_imprimir(receta_id):
         flash(str(exc), "danger")
         return redirect(url_for("clinica.recetas"))
     return render_template("clinica/receta_imprimir.html", r=r, p=r["paciente"], m=r["medico"], c=r["consulta"],
-                           copias=2 if request.args.get("copias") == "2" else 1)
+                           copias=1 if request.args.get("copias") == "1" else 2)
 
 
 # ====================================================================== estudios
@@ -362,6 +363,19 @@ def perfil():
     if request.method == "POST":
         try:
             svc.guardar_perfil(current_user.id, request.form)
+            for lado in ("izq", "der"):
+                archivo = request.files.get(f"logo_{lado}")
+                if archivo and archivo.filename:
+                    ext = os.path.splitext(archivo.filename)[1].lower()
+                    if ext not in {".png", ".jpg", ".jpeg", ".webp", ".svg"}:
+                        raise svc.ClinicaError("El logo debe ser imagen PNG, JPG, WEBP o SVG.")
+                    carpeta = os.path.join(current_app.config["UPLOAD_FOLDER"], "perfil")
+                    os.makedirs(carpeta, exist_ok=True)
+                    nombre = f"u{current_user.id}_{lado}_{uuid.uuid4().hex[:8]}{ext}"
+                    archivo.save(os.path.join(carpeta, nombre))
+                    svc.guardar_logo_perfil(current_user.id, current_user.nombre, lado, nombre)
+                elif request.form.get(f"quitar_{lado}"):
+                    svc.guardar_logo_perfil(current_user.id, current_user.nombre, lado, None)
             flash("Perfil médico actualizado. Así aparecerá en tus recetas.", "success")
             return redirect(url_for("clinica.perfil"))
         except svc.ClinicaError as exc:
@@ -369,7 +383,21 @@ def perfil():
     return render_template("clinica/perfil.html", m=svc.perfil_medico(current_user.id, current_user.nombre))
 
 
+@bp.route("/perfil/logo/<int:usuario_id>/<lado>")
+def perfil_logo(usuario_id, lado):
+    m = svc.perfil_medico(usuario_id)
+    archivo = m.get(f"logo_{lado}") if lado in ("izq", "der") else None
+    if not archivo:
+        abort(404)
+    return send_from_directory(os.path.join(current_app.config["UPLOAD_FOLDER"], "perfil"), archivo, max_age=3600)
+
+
 # ====================================================================== JSON auxiliares
+@bp.route("/api/diagnosticos")
+def api_diagnosticos():
+    return jsonify(svc.diagnosticos_frecuentes())
+
+
 @bp.route("/api/pacientes")
 def api_pacientes():
     q = (request.args.get("q") or "").strip()

@@ -45,8 +45,8 @@ def _txt(valor, largo=None):
     return v[:largo] if (largo and isinstance(v, str)) else v
 
 
-def edad(fecha_nacimiento, referencia=None):
-    """Edad legible: '57 años', '8 años 7 meses', '5 meses'."""
+def edad(fecha_nacimiento, referencia=None, completa=False):
+    """Edad legible: '57 años', '8 años 7 meses', '5 meses'. Con completa=True: '53 años 5 meses'."""
     if not fecha_nacimiento:
         return None
     ref = referencia or date.today()
@@ -56,7 +56,7 @@ def edad(fecha_nacimiento, referencia=None):
     meses = (ref.year - fecha_nacimiento.year) * 12 + ref.month - fecha_nacimiento.month - (ref.day < fecha_nacimiento.day)
     if anios < 1:
         return f"{max(meses, 0)} mes{'es' if meses != 1 else ''}"
-    if anios < 12:
+    if anios < 12 or completa:
         m = meses - anios * 12
         return f"{anios} año{'s' if anios != 1 else ''}" + (f" {m} mes{'es' if m != 1 else ''}" if m else "")
     return f"{anios} años"
@@ -266,6 +266,51 @@ def agregar_padecimiento(paciente_id, form, cursor=None):
                    cursor=cursor)
 
 
+def padecimiento_desde_diagnostico(cur, paciente_id, descripcion, cie10=None, cronico=False):
+    """
+    Guarda automáticamente un diagnóstico en la lista de padecimientos del paciente.
+    Si ya lo tiene (mismo CIE-10 o mismo nombre) no lo duplica: lo reutiliza y, si
+    estaba resuelto, lo vuelve a marcar activo.
+    """
+    cie10 = _txt(cie10, 10)
+    existente = None
+    if cie10:
+        existente = fetch_one("""SELECT id, estado FROM paciente_padecimientos
+                                 WHERE paciente_id = %s AND status = 1 AND cie10 = %s ORDER BY id LIMIT 1""",
+                              (paciente_id, cie10), cursor=cur)
+    if not existente:
+        existente = fetch_one("""SELECT id, estado FROM paciente_padecimientos
+                                 WHERE paciente_id = %s AND status = 1 AND LOWER(nombre) = LOWER(%s) ORDER BY id LIMIT 1""",
+                              (paciente_id, descripcion), cursor=cur)
+    if existente:
+        if existente["estado"] == "resuelto":
+            execute("UPDATE paciente_padecimientos SET estado = 'activo', fecha_diagnostico = %s WHERE id = %s",
+                    (date.today(), existente["id"]), cursor=cur)
+        return existente["id"]
+    return agregar_padecimiento(paciente_id, {"nombre": descripcion, "cie10": cie10,
+                                              "tipo": "cronico" if cronico else "agudo", "estado": "activo"}, cursor=cur)
+
+
+def aprender_diagnostico(cur, descripcion, cie10=None):
+    """Catálogo propio: cada diagnóstico usado queda disponible para autocompletar."""
+    descripcion = _txt(descripcion, 200)
+    if not descripcion:
+        return
+    fila = fetch_one("SELECT id FROM diagnosticos_frecuentes WHERE descripcion = %s", (descripcion,), cursor=cur)
+    if fila:
+        execute("""UPDATE diagnosticos_frecuentes SET usos = usos + 1, ultimo_uso = %s,
+                          cie10 = COALESCE(%s, cie10) WHERE id = %s""",
+                (datetime.now(), _txt(cie10, 10), fila["id"]), cursor=cur)
+    else:
+        execute("INSERT INTO diagnosticos_frecuentes (descripcion, cie10, usos, ultimo_uso) VALUES (%s, %s, 1, %s)",
+                (descripcion, _txt(cie10, 10), datetime.now()), cursor=cur)
+
+
+def diagnosticos_frecuentes(limite=300):
+    return fetch_all("""SELECT descripcion AS d, cie10 AS c, usos FROM diagnosticos_frecuentes
+                        ORDER BY usos DESC, ultimo_uso DESC LIMIT %s""", (int(limite),))
+
+
 def actualizar_padecimiento(paciente_id, padecimiento_id, estado):
     if estado not in ESTADOS_PADECIMIENTO:
         raise ClinicaError("Estado inválido.")
@@ -440,10 +485,10 @@ def crear_consulta(paciente_id, medico_id, form, diagnosticos, medicamentos, est
             if not desc:
                 continue
             padecimiento_id = None
-            if d.get("agregar"):
-                padecimiento_id = agregar_padecimiento(paciente_id, {
-                    "nombre": desc, "cie10": d.get("cie10"), "tipo": d.get("cronico") and "cronico" or "agudo",
-                    "estado": "activo"}, cursor=cur)
+            # Por defecto el diagnóstico se guarda solo en el expediente (salvo que se desmarque)
+            if d.get("agregar", True) not in (False, "false", "0", 0, ""):
+                padecimiento_id = padecimiento_desde_diagnostico(cur, paciente_id, desc, d.get("cie10"), d.get("cronico"))
+            aprender_diagnostico(cur, desc, d.get("cie10"))
             execute("""INSERT INTO consulta_diagnosticos (consulta_id, descripcion, cie10, tipo, padecimiento_id)
                        VALUES (%s, %s, %s, %s, %s)""",
                     (consulta_id, desc, _txt(d.get("cie10"), 10),
@@ -577,6 +622,8 @@ def obtener_receta(receta_id):
     r["alergias"] = fetch_all("SELECT alergeno FROM paciente_alergias WHERE paciente_id = %s AND status = 1",
                               (r["paciente_id"],))
     r["consulta"] = fetch_one("SELECT * FROM consultas_medicas WHERE id = %s", (r["consulta_id"],)) if r["consulta_id"] else None
+    r["diagnosticos"] = fetch_all("SELECT descripcion, cie10, tipo FROM consulta_diagnosticos WHERE consulta_id = %s ORDER BY id",
+                                  (r["consulta_id"],)) if r["consulta_id"] else []
     r["medico"] = perfil_medico(r["medico_id"], r["medico_usuario"])
     return r
 
@@ -687,7 +734,7 @@ def perfil_medico(usuario_id, nombre_usuario=""):
 
 
 CAMPOS_PERFIL = {"nombre_mostrar": 150, "especialidad": 120, "cedula_profesional": 30, "cedula_especialidad": 30,
-                 "institucion": 150, "telefono": 30, "email": 120, "direccion": 255, "horario": 150,
+                 "institucion": 150, "telefono": 30, "whatsapp": 30, "email": 120, "direccion": 255, "horario": 150,
                  "leyenda_receta": 255}
 
 
@@ -701,6 +748,15 @@ def guardar_perfil(usuario_id, form):
     else:
         execute(f"INSERT INTO perfil_medico (usuario_id, {', '.join(v)}) VALUES (%s, {', '.join(['%s'] * len(v))})",
                 [usuario_id] + list(v.values()))
+
+
+def guardar_logo_perfil(usuario_id, nombre_usuario, lado, archivo):
+    """lado: 'izq' (escudo / institución) o 'der' (emblema). archivo=None lo quita."""
+    if lado not in ("izq", "der"):
+        raise ClinicaError("Logo inválido.")
+    if not fetch_one("SELECT usuario_id FROM perfil_medico WHERE usuario_id = %s", (usuario_id,)):
+        execute("INSERT INTO perfil_medico (usuario_id, nombre_mostrar) VALUES (%s, %s)", (usuario_id, nombre_usuario or "Médico"))
+    execute(f"UPDATE perfil_medico SET logo_{lado} = %s WHERE usuario_id = %s", (archivo, usuario_id))
 
 
 # =================================================================== tablero

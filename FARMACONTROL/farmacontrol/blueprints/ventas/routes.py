@@ -2,7 +2,7 @@
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
-from ...db import fetch_all, to_float
+from ...db import fetch_all, fetch_one, to_float
 from ...models import ROL_ADMIN
 from ...services import ventas as svc
 from ...services.catalogos import metodos_pago, usuarios_activos
@@ -114,7 +114,15 @@ def ver_detalle_venta(venta_id):
         total_costo=total_costo,
         utilidad=utilidad,
         antibioticos=[d for d in detalles if d["antibiotico"]],
+        registro_ab=_registro_ab(venta_id),
     )
+
+
+def _registro_ab(venta_id):
+    try:
+        return fetch_one("SELECT * FROM antibioticos_recetas WHERE venta_id = %s ORDER BY id LIMIT 1", (venta_id,))
+    except Exception:  # tabla aún no creada (migración pendiente)
+        return None
 
 
 @bp.route("/ticket/reimprimir/<int:venta_id>")
@@ -134,4 +142,5 @@ def reimprimir_ticket(venta_id):
         pago=venta["pago_recibido"],
         cambio=venta["cambio_entregado"],
         reimpresion=request.args.get("reimpresion") == "1",
+        registro_ab=_registro_ab(venta_id),
     )

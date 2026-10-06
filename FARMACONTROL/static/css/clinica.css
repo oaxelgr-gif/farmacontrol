@@ -91,3 +91,13 @@
   [data-panel] { display: block !important; }
   [data-panel][hidden] { display: block !important; }
 }
+
+/* Diagnósticos frecuentes y borrador automático */
+.dx-frecuentes { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 12px; font-size: .82rem; }
+.chip-dx { border: 1px solid var(--glass-border); background: var(--glass-soft); color: var(--text); border-radius: 999px; padding: 5px 11px; font-size: .8rem; font-weight: 600; cursor: pointer; transition: transform .2s; }
+.chip-dx:hover { transform: translateY(-1px); border-color: var(--accent); color: var(--accent); }
+.chip-dx .mono { color: var(--accent); font-size: .74rem; }
+.borrador-banner { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.borrador-banner .grow { flex: 1; }
+.logo-slot { display: flex; gap: 12px; align-items: center; }
+.logo-slot img { width: 64px; height: 64px; object-fit: contain; border-radius: 10px; background: #fff; padding: 4px; border: 1px solid var(--glass-border); }

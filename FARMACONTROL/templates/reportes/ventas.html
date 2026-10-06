@@ -68,11 +68,10 @@
 <section class="card-glass glass reveal reveal-4">
     <div class="card-head">
         <h2 class="card-title"><span class="ico"><i class="fas fa-list"></i></span> Detalle de ventas <span class="pill pill-accent">{{ ventas|length }}</span></h2>
-        <input type="search" class="form-control no-print" style="max-width:260px" placeholder="Filtrar…" data-table-filter="#tablaVentas">
     </div>
     <div class="table-wrap table-scroll" style="max-height:600px">
-        <table class="table" id="tablaVentas">
-            <thead><tr><th>Fecha</th><th>Folio</th><th>Vendedor</th><th>Cliente</th><th>Método</th><th>Productos</th><th class="num">Total</th><th class="num">Recibido</th><th class="num">Cambio</th><th class="num no-print"></th></tr></thead>
+        <table class="table" id="tablaVentas" data-tabla="Ventas detalladas" data-subtitulo="Del {{ fecha_inicio|fecha }} al {{ fecha_fin|fecha }}" data-orientacion="landscape">
+            <thead><tr><th>Fecha</th><th>Folio</th><th data-filtro>Vendedor</th><th>Cliente</th><th data-filtro>Método</th><th>Productos</th><th class="num">Total</th><th class="num">Recibido</th><th class="num">Cambio</th><th class="num no-print" data-no-export>Ticket</th></tr></thead>
             <tbody>
             {% for v in ventas %}
                 <tr>
@@ -80,14 +79,15 @@
                     <td class="mono fw-700">{{ v.folio }}</td>
                     <td>{{ v.vendedor }}</td>
                     <td class="text-2">{{ v.cliente or 'Público General' }}</td>
-                    <td>{{ ui.metodo_pill(v.metodo_pago) }}</td>
-                    <td><span class="cell-sub" title="{{ v.productos_resumen }}">{{ (v.productos_resumen or '')|truncate(45) }}</span></td>
+                    <td data-export="{{ v.metodo_pago }}">{{ ui.metodo_pill(v.metodo_pago) }}</td>
+                    <td data-export="{{ v.productos_resumen or '' }}"><span class="cell-sub" title="{{ v.productos_resumen }}">{{ (v.productos_resumen or '')|truncate(45) }}</span></td>
                     <td class="num fw-800">{{ v.total|money }}</td>
                     <td class="num text-2">{{ v.pago_recibido|money }}</td>
                     <td class="num text-2">{{ v.cambio_entregado|money }}</td>
                     <td class="num no-print" style="white-space:nowrap">
-                        <a class="btn btn-glass btn-icon" href="{{ url_for('ventas.ver_detalle_venta', venta_id=v.id) }}" title="Detalle"><i class="fas fa-eye"></i></a>
-                        <button class="btn btn-glass btn-icon" onclick="verTicket({{ v.id }}, '{{ v.folio }}')" title="Ticket"><i class="fas fa-print"></i></button>
+                        <a class="btn btn-glass btn-icon" href="{{ url_for('ventas.ver_detalle_venta', venta_id=v.id) }}" title="Ver venta y ticket"><i class="fas fa-eye"></i></a>
+                        <button class="btn btn-glass btn-icon" onclick="verTicket({{ v.id }}, '{{ v.folio }}')" title="Ver ticket"><i class="fas fa-receipt"></i></button>
+                        <button class="btn btn-glass btn-icon" onclick="reimprimirTicket({{ v.id }})" title="Reimprimir ticket"><i class="fas fa-print"></i></button>
                     </td>
                 </tr>
             {% else %}

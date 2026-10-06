@@ -25,11 +25,6 @@
 {% block content %}
 <div class="pos-grid">
     <section class="pos-left">
-        <div class="scan glass reveal reveal-2">
-            <i class="fas fa-barcode scan-ico"></i>
-            <input type="text" id="barcode-input" class="scan-input" placeholder="Escanea el código o escribe el nombre del producto…" autocomplete="off" autofocus>
-            <kbd class="d-none d-md-inline-block">Enter</kbd>
-        </div>
 
         <div class="quick reveal reveal-2">
             <button class="quick-btn glass" onclick="POS.abrirSeleccion('productos')"><i class="fas fa-capsules text-accent"></i><span>Productos</span><kbd>F1</kbd></button>
@@ -40,6 +35,7 @@
         </div>
 
         <div id="cuenta-paciente" class="cuenta glass reveal" hidden></div>
+
 
         <div class="card-glass glass cart reveal reveal-3">
             <div class="card-head" style="margin-bottom:10px">
@@ -52,6 +48,12 @@
                     <tbody id="carrito-table"></tbody>
                 </table>
             </div>
+        </div>
+
+        <div class="scan scan-abajo glass">
+            <i class="fas fa-barcode scan-ico"></i>
+            <input type="text" id="barcode-input" class="scan-input" placeholder="Escanea el código o escribe el nombre del producto…" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" name="fc-scan-codigo" data-form-type="other" data-lpignore="true" autofocus>
+            <kbd class="d-none d-md-inline-block">Enter</kbd>
         </div>
     </section>
 
@@ -98,6 +100,74 @@
 </div>
 
 <!-- Clientes -->
+<!-- Control de antibióticos (mismo orden que el control anterior del punto de venta) -->
+<div class="modal fade" id="modalAntibiotico" tabindex="-1" aria-hidden="true" data-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:680px">
+        <form class="modal-content" id="formAntibiotico" autocomplete="off">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-prescription text-danger"></i> Control de Antibióticos</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Cerrar"><span aria-hidden="true">&times;</span></button>
+            </div>
+            <div class="modal-body ab-body">
+                <div class="ab-grid">
+                    <div class="form-group ab-auto ab-cedula">
+                        <label>Cédula *</label>
+                        <input name="medico_cedula" class="form-control mono" required placeholder="Cédula profesional">
+                        <div class="ab-sugerencias" data-sug="cedula"></div>
+                    </div>
+                    <div class="form-group ab-auto ab-nombre">
+                        <label>Nombre *</label>
+                        <input name="medico_nombre" class="form-control" required placeholder="Nombre del médico">
+                        <div class="ab-sugerencias" data-sug="medico"></div>
+                    </div>
+                    <div class="form-group ab-full">
+                        <label>Domicilio</label>
+                        <input name="medico_domicilio" class="form-control" placeholder="Domicilio del médico">
+                    </div>
+                    <div class="form-group ab-inst">
+                        <label>Institución</label>
+                        <input name="institucion" class="form-control" list="abInstituciones" placeholder="Institución que expidió la receta">
+                    </div>
+                    <div class="form-group ab-vale">
+                        <label class="ab-check"><input type="checkbox" name="vale_salida" value="SI"> Vale de salida</label>
+                    </div>
+                    <div class="form-group ab-recoge">
+                        <label>Se recoge receta</label>
+                        <div class="ab-radios">
+                            <label><input type="radio" name="destino_receta" value="retenida" checked> SÍ</label>
+                            <label><input type="radio" name="destino_receta" value="sellada"> NO</label>
+                        </div>
+                    </div>
+                    <div class="form-group ab-sust">
+                        <label>Sustancia</label>
+                        <div class="ab-sustancia" id="abProductos"></div>
+                    </div>
+                    <div class="form-group ab-auto ab-full">
+                        <label>Nombre de paciente * <span id="abPacienteTag" class="ab-tag"></span></label>
+                        <input name="paciente_nombre" class="form-control" required placeholder="Busca un paciente de la clínica o escribe el nombre">
+                        <input type="hidden" name="paciente_id">
+                        <div class="ab-sugerencias" data-sug="paciente"></div>
+                    </div>
+                </div>
+                <details class="ab-mas">
+                    <summary>Más datos de la receta (opcional)</summary>
+                    <div class="row" style="margin-top:10px">
+                        <div class="col-sm-4 form-group"><label>Folio de receta</label><input name="receta_folio" class="form-control mono"></div>
+                        <div class="col-sm-4 form-group"><label>Fecha de receta</label><input type="date" name="receta_fecha" class="form-control"></div>
+                        <div class="col-sm-4 form-group"><label>Observaciones</label><input name="observaciones" class="form-control"></div>
+                    </div>
+                    <input type="hidden" name="receta_clinica_id">
+                </details>
+            </div>
+            <div class="modal-footer ab-botones">
+                <button type="submit" class="btn btn-primary btn-lg" accesskey="a"><span><u>A</u>ceptar</span></button>
+                <button type="button" class="btn btn-glass btn-lg" data-dismiss="modal" accesskey="c"><span><u>C</u>ancelar</span></button>
+            </div>
+        </form>
+    </div>
+</div>
+<datalist id="abInstituciones"><option value="Consultorio particular"><option value="IMSS"><option value="ISSSTE"><option value="Secretaría de Salud"><option value="Hospital privado"><option value="Consultorio adyacente a farmacia"></datalist>
+
 <div class="modal fade" id="modalClientes" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
         <div class="modal-content">
@@ -174,6 +244,9 @@ window.POS_CONFIG = {
         clientes: "{{ url_for('api.api_get_clientes') }}",
         nuevoCliente: "{{ url_for('api.api_nuevo_cliente') }}",
         procesar: "{{ url_for('api.api_procesar_venta') }}",
+        abProductos: "{{ url_for('api.antibioticos_productos') }}",
+        abMedicos: "{{ url_for('api.antibioticos_medicos') }}",
+        abPacientes: "{{ url_for('api.antibioticos_pacientes') }}",
         cuenta: "{{ url_for('api.cuenta_paciente') }}",
         ticket: "{{ url_for('ventas.reimprimir_ticket', venta_id=0) }}"
     }
