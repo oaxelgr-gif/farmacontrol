@@ -24,8 +24,8 @@ td.desc { padding-top: 1.2mm; }
 .tb-btn.primary { background: linear-gradient(180deg, #12a58f, #0e8a78); color: #fff; border-color: transparent; }
 .notice { max-width: 76mm; margin: 0 auto 12px; text-align: center; font-family: -apple-system, "Segoe UI", sans-serif; font-size: 12px; background: #e3f6ef; color: #0f6b4a; padding: 8px 10px; border-radius: 10px; }
 @media print {
-  body { background: #fff; padding: 0; }
-  .ticket { width: 72mm; box-shadow: none; border-radius: 0; padding: 2mm; margin: 0; }
+  body { background: #fff; padding: 0; margin: 0; }
+  .ticket { width: 100%; max-width: 48mm; box-shadow: none; border-radius: 0; padding: 0 1mm; margin: 0 auto; }
   .no-print { display: none !important; }
 }
 /* Dentro de un iframe (vista previa en POS / detalle) */

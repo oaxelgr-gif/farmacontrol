@@ -1,7 +1,0 @@
-{# Los mensajes flash se convierten en toasts flotantes (static/js/app.js) #}
-{% set _mapa = {'error': 'danger', 'message': 'info'} %}
-{% with messages = get_flashed_messages(with_categories=true) %}
-    {% for category, message in messages %}
-        <span hidden data-flash="{{ message }}" data-type="{{ _mapa.get(category, category) }}"></span>
-    {% endfor %}
-{% endwith %}
